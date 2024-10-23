@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags %}
+
+
+{% block title %}Blog - Derakht{% endblock %}
+
+{% block extra_css %}
+<style>
+    .blog-index {
+        display: grid;
+        gap: 2rem;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+
+    .blog-post-card {
+        background-color: var(--md-sys-color-surface);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .blog-post-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .blog-post-card__image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+    }
+
+    .blog-post-card__content {
+        padding: 1.5rem;
+    }
+
+    .blog-post-card__title {
+        color: var(--md-sys-color-on-surface);
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+    }
+
+    .blog-post-card__date {
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .blog-post-card__intro {
+        color: var(--md-sys-color-on-surface);
+        margin-bottom: 1rem;
+    }
+
+    .blog-post-card__link {
+        display: inline-block;
+        background-color: var(--md-sys-color-primary);
+        color: var(--md-sys-color-on-primary);
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        text-decoration: none;
+        transition: background-color 0.2s ease-in-out;
+    }
+
+    .blog-post-card__link:hover {
+        background-color: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <h1>{{ page.title }}</h1>
+    <div class="intro">{{ page.intro|richtext }}</div>
+
+    <div class="blog-index">
+        {% for post in page.get_children.live.specific %}
+            <article class="blog-post-card">
+                {% with post.main_image as main_image %}
+                    {% if main_image %}
+                        {% image post.main_image fill-300x200 as img %}
+                        <img src="{{ img.url }}" alt="{{ post.title }}" class="blog-post-card__image">
+                    {% endif %}
+                {% endwith %}`
+                <div class="blog-post-card__content">
+                    <h2 class="blog-post-card__title">{{ post.title }}</h2>
+                    <p class="blog-post-card__date">{{ post.date|date:"F j, Y" }}</p>
+                    <div class="blog-post-card__intro">{{ post.intro|truncatewords:30 }}</div>
+                    <a href="{% pageurl post %}" class="blog-post-card__link">Read more</a>
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+{% endblock %}

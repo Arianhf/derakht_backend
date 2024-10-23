@@ -1,0 +1,153 @@
+{% load static %}
+{% load wagtailcore_tags %}
+
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Derakht Blog{% endblock %}</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/light.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/dark.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/light-mc.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/light-hc.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/dark-mc.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/dark-hc.css' %}">
+
+
+    <style>
+        /* Base styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            padding: 1rem;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        nav {
+            background-color: var(--md-sys-color-surface-variant);
+            padding: 0.5rem;
+        }
+
+        nav ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+        }
+
+        nav ul li {
+            margin-right: 1rem;
+        }
+
+        nav ul li a {
+            color: var(--md-sys-color-on-surface-variant);
+            text-decoration: none;
+        }
+
+        main {
+            padding: 2rem 0;
+        }
+
+        footer {
+            background-color: var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface-variant);
+            text-align: center;
+            padding: 1rem;
+            margin-top: 2rem;
+        }
+
+        /* Theme switcher styles */
+        #theme-switcher {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+
+        #theme-switcher select {
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid var(--md-sys-color-outline);
+            background-color: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="light">
+    <div id="theme-switcher">
+        <select id="theme-select">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="light-high-contrast">Light High Contrast</option>
+            <option value="light-medium-contrast">Light Medium Contrast</option>
+            <option value="dark-medium-contrast">Dark Medium Contrast</option>
+        </select>
+    </div>
+
+    <header>
+        <div class="container">
+            <h1>Derakht Blog</h1>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <ul>
+                <!-- Add more navigation items as needed -->
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Derakht Blog. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Theme switcher functionality
+        const themeSelect = document.getElementById('theme-select');
+        const body = document.body;
+
+        themeSelect.addEventListener('change', (e) => {
+            body.className = e.target.value;
+            localStorage.setItem('theme', e.target.value);
+        });
+
+        // Load saved theme from localStorage
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            body.className = savedTheme;
+            themeSelect.value = savedTheme;
+        }
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
