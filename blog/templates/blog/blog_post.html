@@ -4,94 +4,51 @@
 
 {% block title %}{{ page.title }} - Derakht Blog{% endblock %}
 
-{% block extra_css %}
-<style>
-    .blog-post {
-        background-color: var(--md-sys-color-surface);
-        border-radius: 8px;
-        padding: 2rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .blog-post__title {
-        color: var(--md-sys-color-on-surface);
-        margin-top: 0;
-        margin-bottom: 0.5rem;
-    }
-
-    .blog-post__meta {
-        color: var(--md-sys-color-on-surface-variant);
-        font-size: 0.9rem;
-        margin-bottom: 1rem;
-    }
-
-    .blog-post__image {
-        width: 100%;
-        max-height: 400px;
-        object-fit: cover;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-    }
-
-    .blog-post__intro {
-        font-size: 1.1rem;
-        font-weight: bold;
-        color: var(--md-sys-color-on-surface);
-        margin-bottom: 1rem;
-    }
-
-    .blog-post__body {
-        color: var(--md-sys-color-on-surface);
-    }
-
-    .blog-post__tags {
-        margin-top: 2rem;
-    }
-
-    .blog-post__tag {
-        display: inline-block;
-        background-color: var(--md-sys-color-secondary-container);
-        color: var(--md-sys-color-on-secondary-container);
-        padding: 0.3rem 0.8rem;
-        border-radius: 16px;
-        font-size: 0.9rem;
-        margin-right: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<article class="blog-post">
-    <h1 class="blog-post__title">{{ page.title }}</h1>
-    <p class="blog-post__meta">
-        Published on {{ page.date|date:"F j, Y" }} by {{ page.author.get_full_name }}
-    </p>
+<article class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <h1 class="mb-3">{{ page.title }}</h1>
+            <p class="text-muted mb-4">
+                <small>Published on {{ page.date|date:"F j, Y" }} by {{ page.author.get_full_name }}</small>
+            </p>
 
-    {% if page.main_image %}
-        {% image page.main_image width-800 as img %}
-        <img src="{{ img.url }}" alt="{{ page.title }}" class="blog-post__image">
-    {% endif %}
+            {% if page.main_image %}
+                {% image page.main_image width-800 as img %}
+                <img src="{{ img.url }}" alt="{{ page.title }}" class="img-fluid rounded mb-4">
+            {% endif %}
 
-    <div class="blog-post__intro">{{ page.intro }}</div>
+            <div class="lead mb-4">{{ page.intro }}</div>
 
-    <div class="blog-post__body">
-        {{ page.body|richtext }}
+            <div class="blog-content">
+                {{ page.body|richtext }}
+            </div>
+
+            {% if page.gallery_images.all %}
+                <div class="mt-5">
+                    <h2 class="mb-4">Gallery</h2>
+                    <div class="row">
+                        {% for item in page.gallery_images.all %}
+                            <div class="col-md-4 mb-4">
+                                <figure class="figure">
+                                    {% image item.image fill-320x240 as img %}
+                                    <img src="{{ img.url }}" class="figure-img img-fluid rounded" alt="{{ item.caption }}">
+                                    <figcaption class="figure-caption text-center">{{ item.caption }}</figcaption>
+                                </figure>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if page.tags.all %}
+                <div class="mt-5">
+                    {% for tag in page.tags.all %}
+                        <span class="badge bg-secondary me-2">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
     </div>
-
-    {% for item in page.gallery_images.all %}
-        <div style="float: inline-start; margin: 10px">
-            {% image item.image fill-320x240 %}
-            <p>{{ item.caption }}</p>
-        </div>
-    {% endfor %}
-
-    {% if page.tags.all %}
-        <div class="blog-post__tags">
-            {% for tag in page.tags.all %}
-                <span class="blog-post__tag">{{ tag }}</span>
-            {% endfor %}
-        </div>
-    {% endif %}
 </article>
 {% endblock %}
