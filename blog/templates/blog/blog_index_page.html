@@ -1,12 +1,42 @@
 {% extends "base.html" %}
 {% load wagtailcore_tags wagtailimages_tags %}
 
-{% block title %}Blog - Derakht{% endblock %}
+{% block title %}بلاگ درخت{% endblock %}
+
+{#{% block content %}#}
+{#    <div class="row">#}
+{#    <h1 class="display-4 mb-4">{{ page.title }}</h1>#}
+{#        <div class="lead mb-5">{{ page.intro|richtext }}</div>#}
+{#        <div class="col-12">#}
+{#            {% for post in page.get_children.live.specific %}#}
+{#                <article class="blog-post">#}
+{#                    <h2 class="h2 mb-3">#}
+{#                        <a href="{% pageurl post %}" class="text-decoration-none text-dark">{{ post.title }}</a>#}
+{#                    </h2>#}
+{##}
+{#                    <div class="text-muted mb-3">#}
+{#                        {{ post.date|date:"Y/m/d" }}#}
+{#                    </div>#}
+{##}
+{#                    {% if post.intro %}#}
+{#                        <div class="mb-3 lead">#}
+{#                            {{ post.intro }}#}
+{#                        </div>#}
+{#                    {% endif %}#}
+{##}
+{#                    <a href="{% pageurl post %}" class="read-more">#}
+{#                        ادامه مطلب#}
+{#                    </a>#}
+{#                </article>#}
+{#            {% endfor %}#}
+{#        </div>#}
+{#    </div>#}
+{#{% endblock %}#}
 
 {% block content %}
     <div class="container">
-        <h1 class="display-4 mb-4">{{ page.title }}</h1>
-        <div class="lead mb-5">{{ page.intro|richtext }}</div>
+{#        <h1 class="display-4 mb-4">{{ page.title }}</h1>#}
+{#        <div class="lead mb-5">{{ page.intro|richtext }}</div>#}
 
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
             {% for post in page.get_children.live.specific %}

@@ -8,39 +8,86 @@
     <!-- Bootstrap RTL CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <!-- Custom CSS -->
+    <style>
+        .blog-post {
+            margin-bottom: 2.5rem;
+            padding-bottom: 2.5rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .blog-post:last-child {
+            border-bottom: none;
+        }
+        header {
+            background-color: #6b9a50 !important;
+        }
+        .header-logo {
+            height: 85px;
+            width: auto;
+            margin-left: 15px;
+        }
+        .decorative-border {
+            width: 100%;
+            height: 60px; /* Adjust based on your image height */
+            background-image: url('{% static "images/header.png" %}');
+            background-repeat: repeat-x;
+            background-size: auto 100%;
+            background-position: center;
+        }
+        .read-more {
+            color: #0d6efd;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .read-more:hover {
+            color: #0a58ca;
+        }
+        .read-more::after {
+            content: '←';
+            display: inline-block;
+            margin-right: 5px;
+            transition: transform 0.2s;
+        }
+        .read-more:hover::after {
+            transform: translateX(-5px);
+        }
+        body {
+          background-image: radial-gradient(green 1px, transparent 0);
+          background-size: 50px 50px;
+        }
+    </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body class="min-vh-100 d-flex flex-column">
-    <!-- Theme switcher -->
-    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050;">
-        <!-- Your theme switcher buttons -->
-    </div>
-
     <!-- Header -->
-    <header class="bg-primary text-white py-4">
+    <header class=" text-white py-4">
         <div class="container">
-            <h1 class="display-4 fw-bold">Derakht Blog</h1>
+            <div class="d-flex align-items-center">
+                <img src="{% static 'images/logo.png' %}"  width="36px" alt="درخت" class="header-logo">
+                <h1 class="display-5 fw-bold mb-0">بلاگ درخت</h1>
+            </div>
         </div>
     </header>
+
+
 
     <!-- Navigation -->
     <nav class="navbar navbar-expand-md navbar-light bg-light">
         <div class="container">
-            <a class="navbar-brand" href="#">Derakht</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <a class="navbar-brand" href="/">درخت</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#">Home</a>
+                        <a class="nav-link active" href="/">خانه</a>
                     </li>
-                    <!-- Add more nav items as needed -->
                 </ul>
             </div>
         </div>
     </nav>
-
+    <!-- Decorative Border -->
+    <div class="decorative-border"></div>
     <!-- Main content -->
     <main class="flex-grow-1 py-4">
         <div class="container">
