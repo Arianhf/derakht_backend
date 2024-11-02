@@ -4,6 +4,7 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
+RUN mkdir /app
 # Set work directory
 WORKDIR /app
 
@@ -14,11 +15,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt /app/requirements.txt
+
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
 
 # Copy project
-COPY . .
+COPY . /app/
 
 # Create user for security
 RUN adduser --disabled-password --no-create-home django
@@ -27,4 +30,8 @@ RUN adduser --disabled-password --no-create-home django
 RUN chown -R django:django /app
 
 # Switch to django user
-USER django 
+USER django
+
+EXPOSE 80
+
+CMD ["bash", "entrypoint"]
