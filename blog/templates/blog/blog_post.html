@@ -20,7 +20,7 @@
         <div class="content col-lg-8">
             <!-- Article Header -->
             <header class="bg-transparent mb-4">
-                <h1 class="display-4 mb-3">{{ page.title }}</h1>
+                <h1 class="display-3 mb-3">{{ page.title }}</h1>
                 <div class="d-flex align-items-center text-muted mb-4">
                     <i class="bi bi-calendar-event me-2"></i>
                     <span class="me-3">{% full_jalali_date page.date %}</span>
@@ -73,13 +73,13 @@
                 </section>
             {% endif %}
 
-            <!-- Tags -->
+
             {% if page.tags.all %}
                 <div class="mt-5 pt-4 border-top">
                     <h3 class="h5 mb-3">Tags</h3>
                     {% for tag in page.tags.all %}
-                        <a href="#" class="badge bg-secondary text-decoration-none me-2 mb-2">
-                            #{{ tag }}
+                        <a href="{% slugurl 'blog-index' %}?tag={{ tag.slug }}" class="badge bg-secondary text-decoration-none me-2 mb-2">
+                            #{{ tag.name }}
                         </a>
                     {% endfor %}
                 </div>
