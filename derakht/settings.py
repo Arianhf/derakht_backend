@@ -174,37 +174,44 @@ CSRF_TRUSTED_ORIGINS = [
     'https://derrakht.ir'
 ]
 
-# MinIO settings
-STORAGES = {
-    "default": {
-        "BACKEND": "storages.backends.s3.S3Storage",
-    },
-    "staticfiles": {
-        "BACKEND": "storages.backends.s3.S3Storage",
-    },
-}
 
+
+
+
+# MinIO settings
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
+
+# MinIO credentials and configuration
 AWS_ACCESS_KEY_ID = os.environ.get('MINIO_ACCESS_KEY')
 AWS_SECRET_ACCESS_KEY = os.environ.get('MINIO_SECRET_KEY')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('MINIO_BUCKET_NAME')
-AWS_S3_ENDPOINT_URL = os.environ.get('MINIO_ENDPOINT','http://minio:9000')  # e.g., 'http://minio:9000'
-AWS_DEFAULT_ACL = 'public-read'
+AWS_STORAGE_BUCKET_NAME = os.environ.get('MINIO_BUCKET_NAME', 'derakht')  # Add default
+AWS_S3_ENDPOINT_URL = os.environ.get('MINIO_ENDPOINT', 'http://minio:9000')
+AWS_S3_USE_SSL = False
+AWS_S3_VERIFY = False
+AWS_DEFAULT_ACL = None
 AWS_QUERYSTRING_AUTH = False
 AWS_S3_FILE_OVERWRITE = False
 AWS_S3_CUSTOM_DOMAIN = os.environ.get('MINIO_EXTERNAL_API', '127.0.0.1:9000')
 
-
-
-# Optional settings
-AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400',
-}
-
-# Separate buckets for static and media (optional)
+# Static and media specific settings
 AWS_STATIC_BUCKET_NAME = os.environ.get('MINIO_STATIC_BUCKET_NAME', 'static')
 AWS_MEDIA_BUCKET_NAME = os.environ.get('MINIO_MEDIA_BUCKET_NAME', 'media')
 
 
-# # URLs for static and media files
-STATIC_URL = f"{AWS_S3_CUSTOM_DOMAIN}/{AWS_STATIC_BUCKET_NAME}/"
-MEDIA_URL = f"{AWS_S3_CUSTOM_DOMAIN}/{AWS_MEDIA_BUCKET_NAME}/"
+STORAGES = {
+    "default": {
+        "BACKEND": 'blog.storages.MediaStorage',
+    },
+    "staticfiles": {
+        "BACKEND": 'blog.storages.StaticStorage',
+    },
+}
+
+# URLs
+STATIC_URL = f"{AWS_S3_CUSTOM_DOMAIN}/static/"
+MEDIA_URL = f"{AWS_S3_CUSTOM_DOMAIN}/media/"
+
+# Fallback locations
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
