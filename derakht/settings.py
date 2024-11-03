@@ -136,15 +136,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
-
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-# Media files (User uploaded files)
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -184,8 +175,14 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # MinIO settings
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+}
 
 AWS_ACCESS_KEY_ID = os.environ.get('MINIO_ACCESS_KEY')
 AWS_SECRET_ACCESS_KEY = os.environ.get('MINIO_SECRET_KEY')
@@ -194,6 +191,9 @@ AWS_S3_ENDPOINT_URL = os.environ.get('MINIO_ENDPOINT','http://minio:9000')  # e.
 AWS_DEFAULT_ACL = 'public-read'
 AWS_QUERYSTRING_AUTH = False
 AWS_S3_FILE_OVERWRITE = False
+AWS_S3_CUSTOM_DOMAIN = os.environ.get('MINIO_EXTERNAL_API', '127.0.0.1:9000')
+
+
 
 # Optional settings
 AWS_S3_OBJECT_PARAMETERS = {
@@ -204,6 +204,7 @@ AWS_S3_OBJECT_PARAMETERS = {
 AWS_STATIC_BUCKET_NAME = os.environ.get('MINIO_STATIC_BUCKET_NAME', 'static')
 AWS_MEDIA_BUCKET_NAME = os.environ.get('MINIO_MEDIA_BUCKET_NAME', 'media')
 
-# URLs for static and media files
-STATIC_URL = f"{AWS_S3_ENDPOINT_URL}/{AWS_STATIC_BUCKET_NAME}/"
-MEDIA_URL = f"{AWS_S3_ENDPOINT_URL}/{AWS_MEDIA_BUCKET_NAME}/"
+
+# # URLs for static and media files
+STATIC_URL = f"{AWS_S3_CUSTOM_DOMAIN}/{AWS_STATIC_BUCKET_NAME}/"
+MEDIA_URL = f"{AWS_S3_CUSTOM_DOMAIN}/{AWS_MEDIA_BUCKET_NAME}/"
