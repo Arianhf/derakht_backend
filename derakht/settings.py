@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'blog',
     'content',
     'shop',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -139,11 +140,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Media files (User uploaded files)
-MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
@@ -152,7 +151,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 WAGTAILADMIN_BASE_URL = 'http://localhost:8000/content_admin'
 WAGTAIL_SITE_NAME = 'درخت'
-
+WAGTAIL_USAGE_COUNT_ENABLED = True
+WAGTAILIMAGES_MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
+WAGTAILDOCS_SERVE_METHOD = 'direct'
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
@@ -179,4 +180,30 @@ REST_FRAMEWORK = {
 
 CSRF_TRUSTED_ORIGINS = [
     os.environ.get('CSRF_TRUSTED_ORIGIN') or 'https://derakht.darkube.app',
+    'https://derrakht.ir'
 ]
+
+# MinIO settings
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
+
+AWS_ACCESS_KEY_ID = os.environ.get('MINIO_ACCESS_KEY')
+AWS_SECRET_ACCESS_KEY = os.environ.get('MINIO_SECRET_KEY')
+AWS_STORAGE_BUCKET_NAME = os.environ.get('MINIO_BUCKET_NAME')
+AWS_S3_ENDPOINT_URL = os.environ.get('MINIO_ENDPOINT','http://minio:9000')  # e.g., 'http://minio:9000'
+AWS_DEFAULT_ACL = 'public-read'
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_FILE_OVERWRITE = False
+
+# Optional settings
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',
+}
+
+# Separate buckets for static and media (optional)
+AWS_STATIC_BUCKET_NAME = os.environ.get('MINIO_STATIC_BUCKET_NAME', 'static')
+AWS_MEDIA_BUCKET_NAME = os.environ.get('MINIO_MEDIA_BUCKET_NAME', 'media')
+
+# URLs for static and media files
+STATIC_URL = f"{AWS_S3_ENDPOINT_URL}/{AWS_STATIC_BUCKET_NAME}/"
+MEDIA_URL = f"{AWS_S3_ENDPOINT_URL}/{AWS_MEDIA_BUCKET_NAME}/"

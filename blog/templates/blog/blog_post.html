@@ -30,8 +30,8 @@
             </header>
 
             <!-- Main Image -->
-            {% if page.main_image %}
-                {% image page.main_image width-800 as img %}
+            {% if page.header_image %}
+                {% image page.header_image width-800 as img %}
                 <figure class="figure mb-4">
                     <img src="{{ img.url }}"
                          alt="{{ page.title }}"
@@ -48,31 +48,6 @@
             <div class="blog-content prose">
                 {{ page.body|richtext }}
             </div>
-
-            <!-- Image Gallery -->
-            {% if page.gallery_images.all %}
-                <section class="mt-5">
-                    <h2 class="h3 mb-4">Gallery</h2>
-                    <div class="row g-4">
-                        {% for item in page.gallery_images.all %}
-                            <div class="col-sm-6 col-md-4">
-                                <figure class="figure">
-                                    {% image item.image fill-320x240 as img %}
-                                    <img src="{{ img.url }}"
-                                         class="figure-img img-fluid rounded shadow-sm"
-                                         alt="{{ item.caption }}">
-                                    {% if item.caption %}
-                                        <figcaption class="figure-caption text-center mt-2">
-                                            {{ item.caption }}
-                                        </figcaption>
-                                    {% endif %}
-                                </figure>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </section>
-            {% endif %}
-
 
             {% if page.tags.all %}
                 <div class="mt-5 pt-4 border-top">

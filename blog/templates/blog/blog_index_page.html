@@ -42,9 +42,9 @@
             {% for post in page.get_children.live.specific %}
                 <div class="col">
                     <div class="card h-100 shadow">
-                        {% with post.main_image as main_image %}
-                            {% if main_image %}
-                                {% image post.main_image fill-300x200 as img %}
+                        {% with post.header_image as header_image %}
+                            {% if header_image %}
+                                {% image post.header_image fill-300x200 as img %}
                                 <img
                                     src="{{ img.url }}"
                                     alt="{{ post.title }}"

@@ -41,7 +41,15 @@ class BlogPostTag(TaggedItemBase):
 
 class BlogPost(Page):
     date = models.DateField("Post date")
+    subtitle = models.CharField(max_length=250, blank=True)
     intro = models.CharField(max_length=250)
+    header_image = models.ForeignKey(
+        'wagtailimages.Image',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+'
+    )
     body = RichTextField(blank=True)
     tags = ClusterTaggableManager(through=BlogPostTag, blank=True)
 
@@ -52,36 +60,17 @@ class BlogPost(Page):
             return jdatetime.date.fromgregorian(date=self.date)
         return None
 
-
-    def main_image(self):
-        gallery_item = self.gallery_images.first()
-        if gallery_item:
-            return gallery_item.image
-        else:
-            return None
-
     search_fields = Page.search_fields + [
         index.SearchField('intro'),
+        index.SearchField('subtitle'),
         index.SearchField('body'),
     ]
 
     content_panels = Page.content_panels + [
         JalaliDatePanel('date'),
+        FieldPanel('subtitle'),
         FieldPanel('intro'),
+        FieldPanel('header_image'),
         FieldPanel('body'),
         FieldPanel('tags'),
-        InlinePanel('gallery_images', label="Gallery images"),
-    ]
-
-
-class BlogPageGalleryImage(Orderable):
-    page = ParentalKey(BlogPost, on_delete=models.CASCADE, related_name='gallery_images')
-    image = models.ForeignKey(
-        'wagtailimages.Image', on_delete=models.CASCADE, related_name='+'
-    )
-    caption = models.CharField(blank=True, max_length=250)
-
-    panels = [
-        FieldPanel('image'),
-        FieldPanel('caption'),
     ]
