@@ -76,6 +76,10 @@ def register_centertext_feature(features):
         "icon": "align-center",
         "description": "Center Text",
         "element": "div",
+        "style": {
+            "display": "block",
+            "text-align": "center",
+        }
     }
 
     features.register_editor_plugin(
