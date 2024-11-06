@@ -1,3 +1,4 @@
+from django.templatetags.static import static
 from wagtail_modeladmin.options import ModelAdmin, modeladmin_register
 
 from content.models import StoryCollection
@@ -83,30 +84,21 @@ def register_centertext_feature(features):
     }
 
     features.register_editor_plugin(
-        "draftail",
-        feature_name,
-        draftail_features.BlockFeature(control)  # Changed to BlockFeature
+        "draftail", feature_name, draftail_features.InlineStyleFeature(control)
     )
-
-    features.register_converter_rule(
-        "contentstate",
-        feature_name,
-        {
-            "from_database_format": {
-                'div[class="text-center"]': BlockElementHandler(type_)
-            },
-            "to_database_format": {
-                "block_map": {  # Changed to block_map
-                    type_: {
-                        "element": "div",
-                        "props": {
-                            "class": "text-center"
-                        }
+    db_conversion = {
+        "from_database_format": {tag: InlineStyleElementHandler(type_)},
+        "to_database_format": {
+            "style_map": {
+                type_: {
+                    "element": tag,
+                    "props": {
+                        "class": "text-center"
                     }
                 }
             }
         }
-    )
+    }
 
     if feature_name not in features.default_features:
         features.default_features.append(feature_name)
@@ -130,34 +122,31 @@ def register_text_align_left(features):
         "type": type_,
         "icon": "align-left",
         "description": "Left align",
-        "element": "div",
+        "style": {
+            "display": "block",
+            "text-align": "left",
+        }
     }
 
     features.register_editor_plugin(
-        "draftail",
-        feature_name,
-        draftail_features.BlockFeature(control)
+        "draftail", feature_name, draftail_features.InlineStyleFeature(control)
     )
 
-    features.register_converter_rule(
-        "contentstate",
-        feature_name,
-        {
-            "from_database_format": {
-                'div[class="text-end"]': BlockElementHandler(type_)
-            },
-            "to_database_format": {
-                "block_map": {
-                    type_: {
-                        "element": "div",
-                        "props": {
-                            "class": "text-end"
-                        }
+    db_conversion = {
+        "from_database_format": {tag: InlineStyleElementHandler(type_)},
+        "to_database_format": {
+            "style_map": {
+                type_: {
+                    "element": tag,
+                    "props": {
+                        "class": "text-end"
                     }
                 }
             }
         }
-    )
+    }
+
+    features.register_converter_rule("contentstate", feature_name, db_conversion)
 
     if feature_name not in features.default_features:
         features.default_features.append(feature_name)
@@ -168,38 +157,36 @@ def register_small_text(features):
     """Add small text feature to the editor."""
     feature_name = "small-text"
     type_ = "SMALLTEXT"
+    tag = "span"
 
     control = {
         "type": type_,
-        "icon": "minus",  # Using built-in minus icon to represent small
+        "icon": "minus",
         "description": "Small Text",
+        "style": {
+            "font-size": "1rem"
+        }
     }
 
     features.register_editor_plugin(
-        "draftail",
-        feature_name,
-        draftail_features.InlineStyleFeature(control)
+        "draftail", feature_name, draftail_features.InlineStyleFeature(control)
     )
 
-    features.register_converter_rule(
-        "contentstate",
-        feature_name,
-        {
-            "from_database_format": {
-                'span[style="font-size: 1rem"]': InlineStyleElementHandler(type_)
-            },
-            "to_database_format": {
-                "style_map": {
-                    type_: {
-                        "element": "span",
-                        "props": {
-                            "style": "font-size: 1rem"
-                        }
+    db_conversion = {
+        "from_database_format": {tag: InlineStyleElementHandler(type_)},
+        "to_database_format": {
+            "style_map": {
+                type_: {
+                    "element": tag,
+                    "props": {
+                        "style": "font-size: 1rem"
                     }
                 }
             }
         }
-    )
+    }
+
+    features.register_converter_rule("contentstate", feature_name, db_conversion)
 
     if feature_name not in features.default_features:
         features.default_features.append(feature_name)
@@ -210,38 +197,36 @@ def register_normal_text(features):
     """Add normal text feature to the editor."""
     feature_name = "normal-text"
     type_ = "NORMALTEXT"
+    tag = "span"
 
     control = {
         "type": type_,
-        "icon": "font",  # Using built-in doc icon for normal
+        "icon": "font",
         "description": "Normal Text",
+        "style": {
+            "font-size": "1.1rem"
+        }
     }
 
     features.register_editor_plugin(
-        "draftail",
-        feature_name,
-        draftail_features.InlineStyleFeature(control)
+        "draftail", feature_name, draftail_features.InlineStyleFeature(control)
     )
 
-    features.register_converter_rule(
-        "contentstate",
-        feature_name,
-        {
-            "from_database_format": {
-                'span[style="font-size: 1.1rem"]': InlineStyleElementHandler(type_)
-            },
-            "to_database_format": {
-                "style_map": {
-                    type_: {
-                        "element": "span",
-                        "props": {
-                            "style": "font-size: 1.1rem"
-                        }
+    db_conversion = {
+        "from_database_format": {tag: InlineStyleElementHandler(type_)},
+        "to_database_format": {
+            "style_map": {
+                type_: {
+                    "element": tag,
+                    "props": {
+                        "style": "font-size: 1.1rem"
                     }
                 }
             }
         }
-    )
+    }
+
+    features.register_converter_rule("contentstate", feature_name, db_conversion)
 
     if feature_name not in features.default_features:
         features.default_features.append(feature_name)
@@ -252,38 +237,44 @@ def register_large_text(features):
     """Add large text feature to the editor."""
     feature_name = "large-text"
     type_ = "LARGETEXT"
+    tag = "span"
 
     control = {
         "type": type_,
-        "icon": "plus",  # Using built-in plus icon for large
+        "icon": "plus",
         "description": "Large Text",
+        "style": {
+            "font-size": "1.2rem"
+        }
     }
 
     features.register_editor_plugin(
-        "draftail",
-        feature_name,
-        draftail_features.InlineStyleFeature(control)
+        "draftail", feature_name, draftail_features.InlineStyleFeature(control)
     )
 
-    features.register_converter_rule(
-        "contentstate",
-        feature_name,
-        {
-            "from_database_format": {
-                'span[style="font-size: 1.2rem"]': InlineStyleElementHandler(type_)
-            },
-            "to_database_format": {
-                "style_map": {
-                    type_: {
-                        "element": "span",
-                        "props": {
-                            "style": "font-size: 1.2rem"
-                        }
+    db_conversion = {
+        "from_database_format": {tag: InlineStyleElementHandler(type_)},
+        "to_database_format": {
+            "style_map": {
+                type_: {
+                    "element": tag,
+                    "props": {
+                        "style": "font-size: 1.2rem"
                     }
                 }
             }
         }
-    )
+    }
+
+    features.register_converter_rule("contentstate", feature_name, db_conversion)
 
     if feature_name not in features.default_features:
         features.default_features.append(feature_name)
+
+@hooks.register("insert_global_admin_css", order=100)
+def global_admin_css():
+    """Add /static/css/custom.css to the admin."""
+    return format_html(
+        '<link rel="stylesheet" href="{}">',
+        static("css/custom.css")
+    )
