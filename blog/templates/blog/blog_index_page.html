@@ -39,7 +39,6 @@
                             <p class="card-text flex-grow-1">
                                 {{ post.intro|truncatewords:30 }}
                             </p>
-                        </div>
                         {% if post.tags.all %}
                             <div class="mt-2 mb-2">
                                 {% for tag in post.tags.all %}
@@ -49,6 +48,7 @@
                                 {% endfor %}
                             </div>
                         {% endif %}
+                        </div>
                         <div class="card-footer bg-transparent border-top">
                             <a
                                 href="{% pageurl post %}"
