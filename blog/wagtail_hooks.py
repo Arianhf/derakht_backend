@@ -116,7 +116,8 @@ def register_centertext_feature(features):
 def register_icons(icons):
     return icons + [
         'blog/align-center.svg',
-        'blog/font.svg'
+        'blog/font.svg',
+        'blog/align-left.svg'
     ]
 
 @hooks.register("register_rich_text_features")
@@ -164,69 +165,126 @@ def register_text_align_left(features):
 
 
 @hooks.register("register_rich_text_features")
-def register_font_size_feature(features):
-    """Add font size feature to the editor."""
-    feature_name = "font-size"
-    type_ = "FONTSIZE"
-
-    # Define your font sizes
-    font_sizes = {
-        '12px': {'label': '12', 'style': {'fontSize': '12px'}},
-        '14px': {'label': '14', 'style': {'fontSize': '14px'}},
-        '16px': {'label': '16', 'style': {'fontSize': '16px'}},
-        '18px': {'label': '18', 'style': {'fontSize': '18px'}},
-        '20px': {'label': '20', 'style': {'fontSize': '20px'}},
-        '24px': {'label': '24', 'style': {'fontSize': '24px'}},
-        '32px': {'label': '32', 'style': {'fontSize': '32px'}},
-    }
+def register_small_text(features):
+    """Add small text feature to the editor."""
+    feature_name = "small-text"
+    type_ = "SMALLTEXT"
 
     control = {
         "type": type_,
-        "icon": "font",
-        "description": "Font Size",
-        "style": {"display": "block"},
-        "items": [
-            {
-                "type": f"{type_}_{size}",
-                "description": f"{label['label']}px",
-                "icon": format_html(
-                    '<div style="font-size: {}px; text-align: center;">{}</div>',
-                    label['label'],
-                    label['label']
-                ),
-                "style": label['style']
-            }
-            for size, label in font_sizes.items()
-        ]
+        "icon": "minus",  # Using built-in minus icon to represent small
+        "description": "Small Text",
     }
 
     features.register_editor_plugin(
         "draftail",
         feature_name,
-        draftail_features.EntityFeature(control)
+        draftail_features.InlineStyleFeature(control)
     )
 
-    # Register conversion rules for each font size
-    for size in font_sizes.keys():
-        features.register_converter_rule(
-            "contentstate",
-            f"font-size-{size}",
-            {
-                "from_database_format": {
-                    f'span[style="font-size: {size}"]': InlineStyleElementHandler(f"{type_}_{size}")
-                },
-                "to_database_format": {
-                    "style_map": {
-                        f"{type_}_{size}": {
-                            "element": "span",
-                            "props": {
-                                "style": f"font-size: {size}"
-                            }
+    features.register_converter_rule(
+        "contentstate",
+        feature_name,
+        {
+            "from_database_format": {
+                'span[style="font-size: 1rem"]': InlineStyleElementHandler(type_)
+            },
+            "to_database_format": {
+                "style_map": {
+                    type_: {
+                        "element": "span",
+                        "props": {
+                            "style": "font-size: 1rem"
                         }
                     }
                 }
             }
-        )
+        }
+    )
+
+    if feature_name not in features.default_features:
+        features.default_features.append(feature_name)
+
+
+@hooks.register("register_rich_text_features")
+def register_normal_text(features):
+    """Add normal text feature to the editor."""
+    feature_name = "normal-text"
+    type_ = "NORMALTEXT"
+
+    control = {
+        "type": type_,
+        "icon": "font",  # Using built-in doc icon for normal
+        "description": "Normal Text",
+    }
+
+    features.register_editor_plugin(
+        "draftail",
+        feature_name,
+        draftail_features.InlineStyleFeature(control)
+    )
+
+    features.register_converter_rule(
+        "contentstate",
+        feature_name,
+        {
+            "from_database_format": {
+                'span[style="font-size: 1.1rem"]': InlineStyleElementHandler(type_)
+            },
+            "to_database_format": {
+                "style_map": {
+                    type_: {
+                        "element": "span",
+                        "props": {
+                            "style": "font-size: 1.1rem"
+                        }
+                    }
+                }
+            }
+        }
+    )
+
+    if feature_name not in features.default_features:
+        features.default_features.append(feature_name)
+
+
+@hooks.register("register_rich_text_features")
+def register_large_text(features):
+    """Add large text feature to the editor."""
+    feature_name = "large-text"
+    type_ = "LARGETEXT"
+
+    control = {
+        "type": type_,
+        "icon": "plus",  # Using built-in plus icon for large
+        "description": "Large Text",
+    }
+
+    features.register_editor_plugin(
+        "draftail",
+        feature_name,
+        draftail_features.InlineStyleFeature(control)
+    )
+
+    features.register_converter_rule(
+        "contentstate",
+        feature_name,
+        {
+            "from_database_format": {
+                'span[style="font-size: 1.2rem"]': InlineStyleElementHandler(type_)
+            },
+            "to_database_format": {
+                "style_map": {
+                    type_: {
+                        "element": "span",
+                        "props": {
+                            "style": "font-size: 1.2rem"
+                        }
+                    }
+                }
+            }
+        }
+    )
 
     if feature_name not in features.default_features:
         features.default_features.append(feature_name)
