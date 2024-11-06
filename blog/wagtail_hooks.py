@@ -76,7 +76,6 @@ def register_centertext_feature(features):
         "type": type_,
         "icon": "align-center",
         "description": "Center Text",
-        "element": "div",
         "style": {
             "display": "block",
             "text-align": "center",
