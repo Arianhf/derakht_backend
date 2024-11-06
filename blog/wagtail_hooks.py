@@ -11,6 +11,7 @@ from wagtail.admin.rich_text.converters.html_to_contentstate import (
 )
 import wagtail.admin.rich_text.editors.draftail.features as draftail_features
 
+
 class BlogPostAdmin(ModelAdmin):
     model = BlogPost
     menu_label = 'Blog Posts'
@@ -113,4 +114,119 @@ def register_centertext_feature(features):
 
 @hooks.register("register_icons")
 def register_icons(icons):
-    return icons + ['blog/align-center.svg']
+    return icons + [
+        'blog/align-center.svg',
+        'blog/font.svg'
+    ]
+
+@hooks.register("register_rich_text_features")
+def register_text_align_left(features):
+    """Add left align feature to the editor."""
+    feature_name = "text-align-left"
+    type_ = "TEXTALIGNLEFT"
+    tag = "div"
+
+    control = {
+        "type": type_,
+        "icon": "align-left",
+        "description": "Left align",
+        "element": "div",
+    }
+
+    features.register_editor_plugin(
+        "draftail",
+        feature_name,
+        draftail_features.BlockFeature(control)
+    )
+
+    features.register_converter_rule(
+        "contentstate",
+        feature_name,
+        {
+            "from_database_format": {
+                'div[class="text-end"]': BlockElementHandler(type_)
+            },
+            "to_database_format": {
+                "block_map": {
+                    type_: {
+                        "element": "div",
+                        "props": {
+                            "class": "text-end"
+                        }
+                    }
+                }
+            }
+        }
+    )
+
+    if feature_name not in features.default_features:
+        features.default_features.append(feature_name)
+
+
+@hooks.register("register_rich_text_features")
+def register_font_size_feature(features):
+    """Add font size feature to the editor."""
+    feature_name = "font-size"
+    type_ = "FONTSIZE"
+
+    # Define your font sizes
+    font_sizes = {
+        '12px': {'label': '12', 'style': {'fontSize': '12px'}},
+        '14px': {'label': '14', 'style': {'fontSize': '14px'}},
+        '16px': {'label': '16', 'style': {'fontSize': '16px'}},
+        '18px': {'label': '18', 'style': {'fontSize': '18px'}},
+        '20px': {'label': '20', 'style': {'fontSize': '20px'}},
+        '24px': {'label': '24', 'style': {'fontSize': '24px'}},
+        '32px': {'label': '32', 'style': {'fontSize': '32px'}},
+    }
+
+    control = {
+        "type": type_,
+        "icon": "font",
+        "description": "Font Size",
+        "style": {"display": "block"},
+        "items": [
+            {
+                "type": f"{type_}_{size}",
+                "description": f"{label['label']}px",
+                "icon": format_html(
+                    '<div style="font-size: {}px; text-align: center;">{}</div>',
+                    label['label'],
+                    label['label']
+                ),
+                "style": label['style']
+            }
+            for size, label in font_sizes.items()
+        ]
+    }
+
+    features.register_editor_plugin(
+        "draftail",
+        feature_name,
+        draftail_features.EntityFeature(control)
+    )
+
+    # Register conversion rules for each font size
+    for size in font_sizes.keys():
+        features.register_converter_rule(
+            "contentstate",
+            f"font-size-{size}",
+            {
+                "from_database_format": {
+                    f'span[style="font-size: {size}"]': InlineStyleElementHandler(f"{type_}_{size}")
+                },
+                "to_database_format": {
+                    "style_map": {
+                        f"{type_}_{size}": {
+                            "element": "span",
+                            "props": {
+                                "style": f"font-size: {size}"
+                            }
+                        }
+                    }
+                }
+            }
+        )
+
+    if feature_name not in features.default_features:
+        features.default_features.append(feature_name)
