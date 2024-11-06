@@ -25,10 +25,14 @@ class BlogIndexPage(Page):
         # Filter by tag
         tag = request.GET.get('tag')
         if tag:
-            blogposts = blogposts.filter(tags__name=tag)
+            blogposts = blogposts.filter(tags__slug=tag)
+            context['current_tag'] = tag
 
         context['blogposts'] = blogposts
         return context
+
+    def get_tag_url(self, tag):
+        return f"{self.url}?tag={tag.slug}"
 
 
 class BlogPostTag(TaggedItemBase):

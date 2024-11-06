@@ -56,7 +56,7 @@
                 <div class="mt-5 pt-4 border-top">
                     <h3 class="h5 mb-3">Tags</h3>
                     {% for tag in page.tags.all %}
-                        <a href="{% slugurl 'blog-index' %}?tag={{ tag.slug }}" class="badge bg-secondary text-decoration-none me-2 mb-2">
+                        <a href="{% url 'wagtail_serve' page.get_parent.specific.url|slice:"1:" %}?tag={{ tag.slug }}" class="badge bg-secondary text-decoration-none me-2 mb-2">
                             #{{ tag.name }}
                         </a>
                     {% endfor %}
