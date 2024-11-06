@@ -43,9 +43,7 @@ def register_code_styling(features):
 
     control = {
         "type": type_,
-        "icon": format_html(
-            '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8.293 6.293a1 1 0 0 1 1.414 0l6 6a1 1 0 0 1 0 1.414l-6 6a1 1 0 0 1-1.414-1.414L13.586 13 8.293 7.707a1 1 0 0 1 0-1.414z"/></svg>'
-        ),
+        "icon": "code",
         "description": "Code",
     }
 
@@ -75,9 +73,7 @@ def register_centertext_feature(features):
 
     control = {
         "type": type_,
-        "icon": format_html(
-            '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 6h16M8 12h8M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
-        ),
+        "icon": "align-center",
         "description": "Center Text",
         "element": "div",
     }
@@ -110,3 +106,7 @@ def register_centertext_feature(features):
 
     if feature_name not in features.default_features:
         features.default_features.append(feature_name)
+
+@hooks.register("register_icons")
+def register_icons(icons):
+    return icons + ['blog/align-center.svg']
