@@ -15,6 +15,9 @@ wagtail-modeladmin = "^2.0.0"
 jdatetime = "^5.0.0"
 django-storages = "^1.14.4"
 boto3 = "^1.35.54"
+djangorestframework-simplejwt = "^5.3.1"
+django-phonenumber-field = "^8.0.0"
+pillow = "^11.0.0"
 
 
 [build-system]
