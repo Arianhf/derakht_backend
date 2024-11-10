@@ -100,6 +100,8 @@ def register_centertext_feature(features):
         }
     }
 
+    features.register_converter_rule("contentstate", feature_name, db_conversion)
+
     if feature_name not in features.default_features:
         features.default_features.append(feature_name)
 
