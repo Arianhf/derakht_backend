@@ -28,7 +28,7 @@
                             {% endif %}
                         {% endwith %}
                         <div class="card-body d-flex flex-column">
-                            <h5 class="card-title fw-semibold">{{ post.title }}</h5>
+                            <h5 class="card-title fw-semibold"><a href="{% pageurl post %}">{{ post.title }}</a></h5>
                             {% if post.subtitle %}
                                 <h6 class="h6 text-muted">{{ post.subtitle }}</h6>
                             {% endif %}
