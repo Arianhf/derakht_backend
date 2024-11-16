@@ -6,12 +6,14 @@ from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'email', 'full_name', 'age', 'profile_image',
+        fields = ('id', 'email', 'first_name', 'last_name', 'age', 'profile_image',
                  'phone_number', 'is_verified')
         read_only_fields = ('is_verified',)
+
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -19,13 +21,14 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['user'] = UserSerializer(self.user).data
         return data
 
+
 class SignUpSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ('email', 'full_name', 'password', 'confirm_password',
+        fields = ('email', 'first_name', 'last_name', 'password', 'confirm_password',
                  'age', 'profile_image', 'phone_number')
 
     def validate(self, attrs):

@@ -1,22 +1,29 @@
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, generics
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.conf import settings
-from django.urls import reverse
 import jwt
 from datetime import datetime, timedelta
+
+from users.models import User
+from users.serializers import CustomTokenObtainPairSerializer, SignUpSerializer
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class SignUpView(generics.CreateAPIView):
+    permission_classes = [AllowAny]
     serializer_class = SignUpSerializer
+    authentication_classes = []
 
     def perform_create(self, serializer):
         user = serializer.save()
@@ -37,6 +44,7 @@ class SignUpView(generics.CreateAPIView):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def verify_email(request):
     email = request.data.get('email')
     token = request.data.get('token')
@@ -55,6 +63,7 @@ def verify_email(request):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def request_password_reset(request):
     email = request.data.get('email')
     try:
@@ -81,6 +90,7 @@ def request_password_reset(request):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def reset_password(request):
     token = request.data.get('token')
     new_password = request.data.get('new_password')
