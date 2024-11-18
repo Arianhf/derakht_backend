@@ -9,26 +9,6 @@ class ActivityType(models.TextChoices):
     COMPLETE_STORY = 'COMPLETE_STORY', 'Complete Story'
 
 
-class Story(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    title = models.CharField(max_length=255)
-    author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='stories'
-    )
-    created_date = models.DateTimeField(auto_now_add=True)
-    is_template = models.BooleanField(default=False)
-    activity_type = models.CharField(
-        max_length=20,
-        choices=ActivityType.choices,
-        default=ActivityType.WRITE_FOR_DRAWING
-    )
-
-    class Meta:
-        ordering = ['-created_date']
-
-
 class StoryTemplate(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
@@ -38,18 +18,30 @@ class StoryTemplate(models.Model):
         choices=ActivityType.choices
     )
 
-
-class StoryPart(models.Model):
+class Story(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    story = models.ForeignKey(Story, related_name='parts', on_delete=models.CASCADE)
-    position = models.IntegerField()
-    text = models.TextField()
-    illustration = models.ImageField(upload_to='illustrations/', null=True, blank=True)
+    title = models.CharField(max_length=255)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='stories'
+    )
     created_date = models.DateTimeField(auto_now_add=True)
+    activity_type = models.CharField(
+        max_length=20,
+        choices=ActivityType.choices,
+        default=ActivityType.WRITE_FOR_DRAWING
+    )
+    story_template = models.ForeignKey(
+        StoryTemplate,
+        on_delete=models.PROTECT,
+        related_name='stories',
+        null=True,
+        blank=True,
+    )
 
     class Meta:
-        ordering = ['position']
-        unique_together = ['story', 'position']
+        ordering = ['-created_date']
 
 
 class StoryPartTemplate(models.Model):
@@ -64,9 +56,43 @@ class StoryPartTemplate(models.Model):
         unique_together = ['template', 'position']
 
 
+class StoryPart(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    story = models.ForeignKey(Story, related_name='parts', on_delete=models.CASCADE)
+    position = models.IntegerField()
+    text = models.TextField()
+    illustration = models.ImageField(upload_to='illustrations/', null=True, blank=True)
+    created_date = models.DateTimeField(auto_now_add=True)
+    story_part_template = models.ForeignKey(
+        StoryPartTemplate,
+        on_delete=models.PROTECT,
+        related_name='stories',
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        ordering = ['position']
+        unique_together = ['story', 'position']
+
+
 class StoryCollection(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
     stories = models.ManyToManyField(StoryTemplate)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class ImageAsset(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    file = models.ImageField(upload_to='image_assets/')
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='image_assets'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']

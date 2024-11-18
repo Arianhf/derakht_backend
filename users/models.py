@@ -11,7 +11,7 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     age = models.IntegerField(
         validators=[MinValueValidator(0), MaxValueValidator(150)],
-        null=True
+        null=True,
     )
     profile_image = models.ImageField(
         upload_to='profile_images/',
@@ -30,7 +30,7 @@ class User(AbstractUser):
     email_verification_token = models.CharField(max_length=255, null=True, blank=True)
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username', 'full_name']
+    REQUIRED_FIELDS = ['username', 'first_name', 'last_name', 'age']
 
     def clean(self):
         super().clean()

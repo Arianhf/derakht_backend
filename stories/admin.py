@@ -70,8 +70,8 @@ class StoryPartInline(admin.TabularInline):
 
 @admin.register(Story)
 class StoryAdmin(admin.ModelAdmin):
-    list_display = ['title', 'author', 'activity_type', 'created_date', 'is_template']
-    list_filter = ['activity_type', 'is_template', 'created_date']
+    list_display = ['title', 'author', 'activity_type', 'created_date']
+    list_filter = ['activity_type', 'created_date']
     search_fields = ['title', 'author']
     inlines = [StoryPartInline]
 

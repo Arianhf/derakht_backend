@@ -13,6 +13,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from django.conf import settings
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -73,6 +75,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'stories.middleware.CSRFExemptMiddleware',
 ]
 
 ROOT_URLCONF = 'derakht.urls'
@@ -239,6 +242,11 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 
 # Frontend URL for email verification and password reset
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
+CSRF_EXEMPT_VIEWS = getattr(settings, 'CSRF_EXEMPT_VIEWS', [])
+CSRF_EXEMPT_VIEWS += [
+    'rest_framework.views.APIView',
+]
 
 try:
     from .local_settings import *
