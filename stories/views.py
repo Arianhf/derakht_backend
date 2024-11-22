@@ -1,3 +1,5 @@
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -52,6 +54,7 @@ class StoryViewSet(viewsets.ModelViewSet):
         return Story.objects.filter(author=self.request.user)
 
     @action(detail=True, methods=['post'])
+    @method_decorator(csrf_exempt)
     def add_part(self, request, pk=None):
         """Add a part to the story"""
         story = self.get_object()
@@ -102,6 +105,7 @@ class StoryViewSet(viewsets.ModelViewSet):
 
 
     @action(detail=True, methods=['post'])
+    @method_decorator(csrf_exempt)
     def finish(self, request, pk=None):
         """Mark the story as finished and set its final title"""
         story = self.get_object()

@@ -1,18 +1,35 @@
+from pathlib import Path
+
 DEBUG = True
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Django's default storage settings
+STORAGES = {
+    "default": {
+        "BACKEND": 'django.core.files.storage.FileSystemStorage',
+    },
+    "staticfiles": {
+        "BACKEND": 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+}
+
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'your_local_db',
-        'USER': 'your_username',
-        'PASSWORD': 'your_password',
+        'NAME': 'derakht_db',
+        'USER': 'arianhf',
+        'PASSWORD': 'testpass1',
         'HOST': 'localhost',
-        'PORT': '5432',
+        'PORT': '5433',
     }
 }
 
-# Local MinIO settings
-AWS_ACCESS_KEY_ID = 'your_access_key'
-AWS_SECRET_ACCESS_KEY = 'your_secret_key'
-AWS_S3_ENDPOINT_URL = 'http://localhost:9000'
-AWS_S3_CUSTOM_DOMAIN = 'localhost:9000'
+# Media files (user uploaded)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'static'

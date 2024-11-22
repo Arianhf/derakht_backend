@@ -4,8 +4,8 @@ from .views import StoryViewSet, StoryTemplateViewSet, StoryCollectionViewSet, I
 
 
 router = DefaultRouter()
+router.register(r'', StoryViewSet, basename='story')
 router.register(r'templates', StoryTemplateViewSet)
-router.register(r'stories', StoryViewSet, basename='story')
 router.register(r'collections', StoryCollectionViewSet)
 router.register(r'images', ImageAssetViewSet, basename='image')
 
