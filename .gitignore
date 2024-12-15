@@ -34,3 +34,6 @@ poetry.lock
 ehthumbs.db
 Thumbs.db
 staticfiles
+
+# Local settings
+local_settings.py

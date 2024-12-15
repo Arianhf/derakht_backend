@@ -1,0 +1,35 @@
+from pathlib import Path
+
+DEBUG = True
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Django's default storage settings
+STORAGES = {
+    "default": {
+        "BACKEND": 'django.core.files.storage.FileSystemStorage',
+    },
+    "staticfiles": {
+        "BACKEND": 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+}
+
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'derakht_db',
+        'USER': 'arianhf',
+        'PASSWORD': 'testpass1',
+        'HOST': 'localhost',
+        'PORT': '5433',
+    }
+}
+
+# Media files (user uploaded)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'static'
