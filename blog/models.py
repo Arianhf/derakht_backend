@@ -114,6 +114,15 @@ class BlogPost(Page):
 
         return json.dumps(schema, cls=DjangoJSONEncoder)
 
+    def get_sitemap_urls(self, request=None):
+
+        return [{
+            'location': self.get_full_url(),
+            'lastmod': self.last_published_at or self.latest_revision_created_at,
+            'changefreq': 'weekly',  # Options: always, hourly, daily, weekly, monthly, yearly, never
+            'priority': 0.8  # Homepage might be 1.0, less important pages 0.5 or lower
+        }]
+
     search_fields = Page.search_fields + [
         index.SearchField('intro'),
         index.SearchField('subtitle'),

@@ -21,13 +21,18 @@ from django.urls import path, include
 from wagtail.admin import urls as wagtailadmin_urls
 from wagtail import urls as wagtail_urls
 from wagtail.documents import urls as wagtaildocs_urls
+from wagtail.contrib.sitemaps.views import sitemap
+
+from derakht.views import robots_txt
 
 urlpatterns = [
+    path('robots.txt', robots_txt),
     path('django-admin/', admin.site.urls),
     path('admin/', include(wagtailadmin_urls)),
     path('documents/', include(wagtaildocs_urls)),
     path('api/users/', include('users.urls')),
     path('api/stories/', include('stories.urls')),
+    path('sitemap.xml', sitemap),
     path('', include(wagtail_urls)),
 ]
 

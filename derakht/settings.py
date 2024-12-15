@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'wagtail.search',
     'wagtail.admin',
     'wagtail',
+    'wagtail.contrib.sitemaps',
 
     'wagtail_modeladmin',
     'modelcluster',
@@ -242,6 +243,13 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 
 # Frontend URL for email verification and password reset
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
+
+# Add these settings
+WAGTAILSITEMAPS_CACHE_TIMEOUT = 60 * 60 * 24  # 24 hours (in seconds)
+
+# Optional but recommended sitemap settings
+WAGTAILSITEMAPS_SITE_URL = 'https://derrakht.ir'
 
 try:
     from .local_settings import *
