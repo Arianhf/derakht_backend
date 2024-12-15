@@ -14,6 +14,18 @@
 </style>
 {% endblock %}
 
+{% block extra_head %}
+    {% if page.alternative_titles %}
+    <meta name="keywords" content="{{ page.alternative_titles }}">
+    {% endif %}
+    <meta name="description" content="{{ page.intro }}">
+
+    <script type="application/ld+json">
+        {{ page.get_schema_markup|safe }}
+    </script>
+{% endblock %}
+
+
 {% block content %}
 <article class="container py-4">
     <div class="row justify-content-center">

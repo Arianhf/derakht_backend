@@ -1,12 +1,15 @@
+import json
+
 import jdatetime
 from modelcluster.fields import ParentalKey
 from django.db import models
 from wagtail.models import Page, Orderable
 from wagtail.fields import RichTextField
-from wagtail.admin.panels import FieldPanel, InlinePanel
+from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel
 from wagtail.search import index
 from modelcluster.contrib.taggit import ClusterTaggableManager
 from taggit.models import TaggedItemBase
+from django.core.serializers.json import DjangoJSONEncoder
 
 from blog.panels import JalaliDatePanel
 
@@ -47,6 +50,10 @@ class BlogPost(Page):
     date = models.DateField("Post date")
     subtitle = models.CharField(max_length=250, blank=True)
     intro = models.CharField(max_length=250)
+    alternative_titles = models.TextField(
+        blank=True,
+        help_text="Enter alternative titles separated by commas"
+    )
     header_image = models.ForeignKey(
         'wagtailimages.Image',
         null=True,
@@ -64,15 +71,62 @@ class BlogPost(Page):
             return jdatetime.date.fromgregorian(date=self.date)
         return None
 
+    def get_alternative_titles_list(self):
+        """Returns alternative titles as a list"""
+        if self.alternative_titles:
+            return [title.strip() for title in self.alternative_titles.split(',')]
+        return []
+
+    def get_schema_markup(self):
+        """Generate schema.org JSON-LD markup"""
+        schema = {
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            "headline": self.title,
+            "alternativeHeadline": self.subtitle or "",
+            "alternativeHeadlines": self.get_alternative_titles_list(),
+            "description": self.intro,
+            "author": {
+                "@type": "Person",
+                "name": self.owner.get_full_name() if self.owner else "Anonymous"
+            },
+            "datePublished": self.date.isoformat(),
+            "dateModified": self.last_published_at.isoformat() if self.last_published_at else self.date.isoformat(),
+            "mainEntityOfPage": {
+                "@type": "WebPage",
+                "@id": self.get_full_url()
+            },
+            "url": self.get_full_url()
+        }
+
+        # Add image if exists
+        if self.header_image:
+            schema["image"] = {
+                "@type": "ImageObject",
+                "url": self.header_image.get_rendition('original').url,
+                "width": self.header_image.width,
+                "height": self.header_image.height
+            }
+
+        # Add tags if they exist
+        if self.tags.all():
+            schema["keywords"] = ", ".join([tag.name for tag in self.tags.all()])
+
+        return json.dumps(schema, cls=DjangoJSONEncoder)
+
     search_fields = Page.search_fields + [
         index.SearchField('intro'),
         index.SearchField('subtitle'),
         index.SearchField('body'),
+        index.SearchField('alternative_titles'),  # Add alternative titles to search
     ]
 
     content_panels = Page.content_panels + [
-        JalaliDatePanel('date'),
-        FieldPanel('subtitle'),
+        MultiFieldPanel([
+            JalaliDatePanel('date'),
+            FieldPanel('subtitle'),
+            FieldPanel('alternative_titles'),
+        ], heading="Post Information"),
         FieldPanel('intro'),
         FieldPanel('header_image'),
         FieldPanel('body'),
