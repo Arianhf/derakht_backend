@@ -18,7 +18,6 @@ from django.conf import settings
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -58,6 +57,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+    'corsheaders',
 
     'blog',
     'stories',
@@ -69,6 +69,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -98,7 +99,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'derakht.wsgi.application'
-
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
@@ -131,7 +131,6 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
@@ -181,10 +180,6 @@ CSRF_TRUSTED_ORIGINS = [
     'https://derrakht.ir'
 ]
 
-
-
-
-
 # MinIO settings
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
@@ -205,7 +200,6 @@ AWS_STORAGE_BUCKET_NAME = os.environ.get('MINIO_BUCKET_NAME', 'derakht')  # Add 
 AWS_STATIC_BUCKET_NAME = os.environ.get('MINIO_STATIC_BUCKET_NAME', 'static')
 AWS_MEDIA_BUCKET_NAME = os.environ.get('MINIO_MEDIA_BUCKET_NAME', 'media')
 
-
 STORAGES = {
     "default": {
         "BACKEND": 'blog.storages.MediaStorage',
@@ -225,7 +219,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 AUTH_USER_MODEL = 'users.User'
 
-
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -244,12 +237,52 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 # Frontend URL for email verification and password reset
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
-
 # Add these settings
 WAGTAILSITEMAPS_CACHE_TIMEOUT = 60 * 60 * 24  # 24 hours (in seconds)
 
 # Optional but recommended sitemap settings
 WAGTAILSITEMAPS_SITE_URL = 'https://derrakht.ir'
+WAGTAILAPI_LIMIT_MAX = 50  # Max number of items per page in API responses
+
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
+    'DEFAULT_FILTER_BACKENDS': [
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+}
+
+# CORS settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://derrakht.ir",
+    "https://derrakht.ir",
+]
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
 
 try:
     from .local_settings import *
