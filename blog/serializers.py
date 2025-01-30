@@ -36,7 +36,8 @@ class BlogPostSerializer(PageSerializer):
         return None
 
     def get_jalali_date(self, obj):
-        return str(obj.jalali_date) if obj.jalali_date else None
+        jalali_date = getattr(obj, 'jalali_date', None)
+        return str(jalali_date) if jalali_date else None
 
     def get_alternative_titles(self, obj):
         return obj.alternative_titles
