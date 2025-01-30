@@ -43,10 +43,13 @@ class BlogPostSerializer(PageSerializer):
         return obj.alternative_titles
 
     def get_schema_markup(self, obj):
-        return obj.get_schema_markup()
+        if hasattr(obj, 'get_schema_markup'):
+            return obj.get_schema_markup()
+        return None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['jalali_date'] = self.get_jalali_date(instance)
         data['schema_markup'] = self.get_schema_markup(instance)
         return data
+
