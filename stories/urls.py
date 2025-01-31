@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import StoryViewSet, StoryTemplateViewSet, StoryCollectionViewSet, ImageAssetViewSet
 
+from .views import StoryViewSet, StoryTemplateViewSet, StoryCollectionViewSet, ImageAssetViewSet
 
 router = DefaultRouter()
 router.register(r'', StoryViewSet, basename='story')

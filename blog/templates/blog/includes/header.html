@@ -1,28 +1,28 @@
 {% load static wagtailcore_tags navigation_tags %}
-    <!-- Header -->
-    <header class="text-white py-4">
-        <div class="container">
-            <div class="d-flex align-items-center">
-                <img src="{% static 'images/logo.png' %}"  width="36px" alt="درخت" class="header-logo">
-                <h1 class="display-5 fw-bold mb-0">بلاگ درخت</h1>
-            </div>
+<!-- Header -->
+<header class="text-white py-4">
+    <div class="container">
+        <div class="d-flex align-items-center">
+            <img src="{% static 'images/logo.png' %}" width="36px" alt="درخت" class="header-logo">
+            <h1 class="display-5 fw-bold mb-0">بلاگ درخت</h1>
         </div>
-    </header>
-    {% get_site_root as site_root %}
-    <nav class="navbar navbar-expand-md navbar-light bg-base">
-        <div class="container">
-            <a class="navbar-brand" href="{% pageurl site_root %}">خانه خلاقیت درخت</a> <span class="text-black">|</span>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    {% for menuitem in site_root.get_children.live.in_menu %}
-                        <li class="nav-item">
-                            <a class="nav-link active" href="{% pageurl menuitem %}">{{ menuitem.title }}</a>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
+    </div>
+</header>
+{% get_site_root as site_root %}
+<nav class="navbar navbar-expand-md navbar-light bg-base">
+    <div class="container">
+        <a class="navbar-brand" href="{% pageurl site_root %}">خانه خلاقیت درخت</a> <span class="text-black">|</span>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                {% for menuitem in site_root.get_children.live.in_menu %}
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% pageurl menuitem %}">{{ menuitem.title }}</a>
+                    </li>
+                {% endfor %}
+            </ul>
         </div>
-    </nav>
+    </div>
+</nav>

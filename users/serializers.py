@@ -1,17 +1,23 @@
-from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 User = get_user_model()
+
+
+class SmallUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'age', 'profile_image')
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'email', 'first_name', 'last_name', 'age', 'profile_image',
-                 'phone_number', 'is_verified')
+                  'phone_number', 'is_verified')
         read_only_fields = ('is_verified',)
 
 
@@ -29,7 +35,7 @@ class SignUpSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('email', 'first_name', 'last_name', 'password', 'confirm_password',
-                 'age', 'profile_image', 'phone_number')
+                  'age', 'profile_image', 'phone_number')
 
     def validate(self, attrs):
         if attrs['password'] != attrs['confirm_password']:

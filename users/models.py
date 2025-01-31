@@ -1,9 +1,9 @@
+import phonenumbers
 from django.contrib.auth.models import AbstractUser
-from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 from phonenumbers import parse as parse_phone_number
-import phonenumbers
 from rest_framework.exceptions import ValidationError
 
 

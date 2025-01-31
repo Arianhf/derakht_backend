@@ -2,15 +2,15 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
+
 from .models import Story, StoryTemplate, StoryCollection, StoryPart, StoryPartTemplate, ImageAsset
 from .serializers import (
     StorySerializer, StoryTemplateSerializer,
     StoryPartSerializer, StoryCollectionSerializer,
     StoryPartTemplateSerializer, ImageAssetSerializer
 )
-from rest_framework.parsers import MultiPartParser, FormParser
-
 
 
 class StoryTemplateViewSet(viewsets.ReadOnlyModelViewSet):
@@ -103,7 +103,6 @@ class StoryViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-
     @action(detail=True, methods=['post'])
     @method_decorator(csrf_exempt)
     def finish(self, request, pk=None):
@@ -169,8 +168,6 @@ class StoryCollectionViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-
 
 
 class ImageAssetViewSet(viewsets.ModelViewSet):

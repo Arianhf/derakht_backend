@@ -1,12 +1,10 @@
+import wagtail.admin.rich_text.editors.draftail.features as draftail_features
 from django.templatetags.static import static
-
 from django.utils.html import format_html
 from wagtail import hooks
 from wagtail.admin.rich_text.converters.html_to_contentstate import (
-    InlineStyleElementHandler,
-    BlockElementHandler
+    InlineStyleElementHandler
 )
-import wagtail.admin.rich_text.editors.draftail.features as draftail_features
 
 
 @hooks.register("register_rich_text_features")
@@ -78,6 +76,7 @@ def register_centertext_feature(features):
     if feature_name not in features.default_features:
         features.default_features.append(feature_name)
 
+
 @hooks.register("register_icons")
 def register_icons(icons):
     return icons + [
@@ -85,6 +84,7 @@ def register_icons(icons):
         'blog/font.svg',
         'blog/align-left.svg'
     ]
+
 
 @hooks.register("register_rich_text_features")
 def register_text_align_left(features):
@@ -245,6 +245,7 @@ def register_large_text(features):
 
     if feature_name not in features.default_features:
         features.default_features.append(feature_name)
+
 
 @hooks.register("insert_global_admin_css", order=100)
 def global_admin_css():

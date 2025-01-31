@@ -1,15 +1,16 @@
+from datetime import datetime, timedelta
+
+import jwt
+from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, generics
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework.decorators import api_view, permission_classes
-from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
-from django.conf import settings
-import jwt
-from datetime import datetime, timedelta
 
 from users.models import User
 from users.serializers import CustomTokenObtainPairSerializer, SignUpSerializer

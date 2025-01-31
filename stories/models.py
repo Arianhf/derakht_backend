@@ -1,6 +1,7 @@
-from django.db import models
 import uuid
+
 from django.conf import settings
+from django.db import models
 
 
 class ActivityType(models.TextChoices):
@@ -17,6 +18,7 @@ class StoryTemplate(models.Model):
         max_length=20,
         choices=ActivityType.choices
     )
+
 
 class Story(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

@@ -1,14 +1,20 @@
-.bg-base{
-   background-color: var(--bs-body-bg);
+.bg-base {
+    background-color: var(--bs-body-bg);
 }
 
 h6, .h6, h5, .h5, h4, .h4, h3, .h3, h2, .h2, h1, .h1 {
     line-height: 1.5;
 }
 
-.text-center{text-align:center !important}
-.text-end{text-align:left !important}
-.card-title a{
+.text-center {
+    text-align: center !important
+}
+
+.text-end {
+    text-align: left !important
+}
+
+.card-title a {
     color: inherit;
     text-decoration: inherit;
 }

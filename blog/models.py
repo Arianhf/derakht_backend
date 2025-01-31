@@ -1,17 +1,21 @@
 import json
 
 import jdatetime
-from modelcluster.fields import ParentalKey
-from django.db import models
-from wagtail.models import Page, Orderable
-from wagtail.fields import RichTextField
-from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel
-from wagtail.search import index
-from modelcluster.contrib.taggit import ClusterTaggableManager
-from taggit.models import TaggedItemBase
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db import models
+from modelcluster.contrib.taggit import ClusterTaggableManager
+from modelcluster.fields import ParentalKey
+from rest_framework.fields import DateField
+from taggit.models import TaggedItemBase
+from wagtail.admin.panels import FieldPanel, MultiFieldPanel
+from wagtail.api import APIField
+from wagtail.fields import RichTextField
+from wagtail.models import Page, Orderable
+from wagtail.search import index
 
 from blog.panels import JalaliDatePanel
+from blog.serializers import CommaSeparatedListField, JalaliDateField
+from users.serializers import SmallUserSerializer
 
 
 class BlogIndexPage(Page):
@@ -63,6 +67,59 @@ class BlogPost(Page):
     )
     body = RichTextField(blank=True)
     tags = ClusterTaggableManager(through=BlogPostTag, blank=True)
+    reading_time = models.PositiveIntegerField(default=0)
+    featured = models.BooleanField(
+        default=False,
+    )
+    hero = models.BooleanField(
+        default=False,
+        help_text="Only one blog post can be the hero at a time"
+    )
+
+    search_fields = Page.search_fields + [
+        index.SearchField('intro'),
+        index.SearchField('subtitle'),
+        index.SearchField('body'),
+        index.SearchField('alternative_titles'),
+    ]
+
+    content_panels = Page.content_panels + [
+        MultiFieldPanel([
+            JalaliDatePanel('date'),
+            FieldPanel('subtitle'),
+            FieldPanel('alternative_titles'),
+            FieldPanel('featured'),
+            FieldPanel('hero'),
+        ], heading="Post Information"),
+        FieldPanel('intro'),
+        FieldPanel('header_image'),
+        FieldPanel('body'),
+        FieldPanel('tags'),
+        FieldPanel('reading_time'),
+    ]
+
+    api_fields = [
+        APIField('date', serializer=DateField(format='%d %B %Y')),
+        APIField('subtitle'),
+        APIField('intro'),
+        APIField('alternative_titles', serializer=CommaSeparatedListField()),
+        APIField('header_image'),
+        APIField('body'),
+        APIField('tags'),
+        APIField('jalali_date', serializer=JalaliDateField()),
+        APIField('reading_time'),
+        APIField('owner', serializer=SmallUserSerializer()),
+        APIField('featured'),
+        APIField('hero'),
+    ]
+
+    def save(self, *args, **kwargs):
+        # If this post is being set as featured
+        if self.hero:
+            # Get all other featured posts
+            BlogPost.objects.exclude(pk=self.pk).filter(hero=True).update(hero=False)
+
+        super().save(*args, **kwargs)
 
     # Property to get Jalali date
     @property
@@ -76,6 +133,10 @@ class BlogPost(Page):
         if self.alternative_titles:
             return [title.strip() for title in self.alternative_titles.split(',')]
         return []
+
+    @property
+    def get_alternative_titles(self):
+        return self.get_alternative_titles_list()
 
     def get_schema_markup(self):
         """Generate schema.org JSON-LD markup"""
@@ -122,22 +183,3 @@ class BlogPost(Page):
             'changefreq': 'weekly',  # Options: always, hourly, daily, weekly, monthly, yearly, never
             'priority': 0.8  # Homepage might be 1.0, less important pages 0.5 or lower
         }]
-
-    search_fields = Page.search_fields + [
-        index.SearchField('intro'),
-        index.SearchField('subtitle'),
-        index.SearchField('body'),
-        index.SearchField('alternative_titles'),  # Add alternative titles to search
-    ]
-
-    content_panels = Page.content_panels + [
-        MultiFieldPanel([
-            JalaliDatePanel('date'),
-            FieldPanel('subtitle'),
-            FieldPanel('alternative_titles'),
-        ], heading="Post Information"),
-        FieldPanel('intro'),
-        FieldPanel('header_image'),
-        FieldPanel('body'),
-        FieldPanel('tags'),
-    ]
