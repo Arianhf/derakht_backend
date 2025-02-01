@@ -14,7 +14,7 @@ from wagtail.models import Page, Orderable
 from wagtail.search import index
 
 from blog.panels import JalaliDatePanel
-from blog.serializers import CommaSeparatedListField, JalaliDateField
+from blog.serializers import CommaSeparatedListField, JalaliDateField, RichTextField as RichTextFieldSerializer
 from users.serializers import SmallUserSerializer
 
 
@@ -104,7 +104,7 @@ class BlogPost(Page):
         APIField('intro'),
         APIField('alternative_titles', serializer=CommaSeparatedListField()),
         APIField('header_image'),
-        APIField('body'),
+        APIField('body', serializer=RichTextFieldSerializer()),
         APIField('tags'),
         APIField('jalali_date', serializer=JalaliDateField()),
         APIField('reading_time'),

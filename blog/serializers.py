@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from wagtail.rich_text import expand_db_html
 
 
 class CommaSeparatedListField(serializers.Field):
@@ -23,4 +24,13 @@ class JalaliDateField(serializers.Field):
     def to_internal_value(self, data):
         # Since this is a property based on an existing field,
         # we don't need to implement to_internal_value
+        return data
+
+
+class RichTextField(serializers.Field):
+    def to_representation(self, value):
+        representation = super().to_representation(value)
+        return expand_db_html(representation)
+
+    def to_internal_value(self, data):
         return data
