@@ -29,8 +29,7 @@ class JalaliDateField(serializers.Field):
 
 class RichTextField(serializers.Field):
     def to_representation(self, value):
-        representation = super().to_representation(value)
-        return expand_db_html(representation)
+        return expand_db_html(value)
 
     def to_internal_value(self, data):
         return data

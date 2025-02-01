@@ -42,7 +42,7 @@ def register_centertext_feature(features):
     """Creates centered text in our richtext editor and page."""
     feature_name = "center"
     type_ = "CENTERTEXT"
-    tag = "div"
+    tag = "center"
 
     control = {
         "type": type_,
@@ -91,7 +91,7 @@ def register_text_align_left(features):
     """Add left align feature to the editor."""
     feature_name = "text-align-left"
     type_ = "TEXTALIGNLEFT"
-    tag = "div"
+    tag = "left-align"
 
     control = {
         "type": type_,
