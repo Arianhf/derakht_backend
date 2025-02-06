@@ -9,6 +9,7 @@ from blog.models import BlogPost
 class BlogPostAPIViewSet(PagesAPIViewSet):
     model = BlogPost
     authentication_classes = []
+    permission_classes = []
     listing_default_fields = PagesAPIViewSet.listing_default_fields + [
         "header_image",
         "reading_time",
