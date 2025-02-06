@@ -162,6 +162,10 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
 }
 
 # Security settings
@@ -223,6 +227,7 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 # Email settings (configure according to your email provider)
@@ -244,14 +249,6 @@ WAGTAILSITEMAPS_CACHE_TIMEOUT = 60 * 60 * 24  # 24 hours (in seconds)
 WAGTAILSITEMAPS_SITE_URL = 'https://derrakht.ir'
 WAGTAILAPI_LIMIT_MAX = 50  # Max number of items per page in API responses
 
-REST_FRAMEWORK = {
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
-    'DEFAULT_FILTER_BACKENDS': [
-        'rest_framework.filters.SearchFilter',
-        'rest_framework.filters.OrderingFilter',
-    ],
-}
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [

@@ -33,15 +33,17 @@ class SignUpView(generics.CreateAPIView):
         user.email_verification_token = token
         user.save()
 
+
+        # TODO: add this part.
         # Send verification email
-        verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}&email={user.email}"
-        send_mail(
-            'Verify your email',
-            f'Please click this link to verify your email: {verification_url}',
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            fail_silently=False,
-        )
+        # verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}&email={user.email}"
+        # send_mail(
+        #     'Verify your email',
+        #     f'Please click this link to verify your email: {verification_url}',
+        #     settings.DEFAULT_FROM_EMAIL,
+        #     [user.email],
+        #     fail_silently=False,
+        # )
 
 
 @api_view(['POST'])
