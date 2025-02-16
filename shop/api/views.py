@@ -11,7 +11,7 @@ from .serializers import (
     CartDetailsSerializer,
     OrderStatusHistorySerializer
 )
-from ..models import Order, Payment
+from ..models import Order, Payment, Product
 from ..services import PaymentService, CartService
 
 
