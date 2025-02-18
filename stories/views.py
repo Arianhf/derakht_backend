@@ -89,10 +89,10 @@ class StoryViewSet(viewsets.ModelViewSet):
             )
         story_part = StoryPart.objects.get(story=story, template=story_part_template)
 
-        if request.data.get('text'):
+        if request.data.get('text', None):
             story_part.text = request.data.get('text')
 
-        if request.data.get('illustration'):
+        if request.data.get('illustration', None):
             story_part.illustration = request.data.get('illustration')
 
         story_part.save()
