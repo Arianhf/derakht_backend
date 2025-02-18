@@ -11,49 +11,17 @@ class ImageAssetSerializer(serializers.ModelSerializer):
 
 
 class StoryPartSerializer(serializers.ModelSerializer):
-    illustration_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
     illustration = serializers.SerializerMethodField()
 
     class Meta:
         model = StoryPart
-        fields = ['id', 'position', 'text', 'illustration', 'illustration_id', 'created_date', 'story_part_template']
+        fields = ['id', 'position', 'text', 'illustration', 'created_date', 'story_part_template']
         read_only_fields = ['position', 'illustration']
 
     def get_illustration(self, obj):
         if obj.illustration:
             return obj.illustration.url
         return None
-
-    def create(self, validated_data):
-        illustration_id = validated_data.pop('illustration_id', None)
-        if illustration_id:
-            try:
-                image_asset = ImageAsset.objects.get(
-                    id=illustration_id,
-                    uploaded_by=self.context['request'].user
-                )
-                validated_data['illustration'] = image_asset.file
-            except ImageAsset.DoesNotExist:
-                raise serializers.ValidationError({"illustration_id": "Invalid image ID"})
-
-        return super().create(validated_data)
-
-    def update(self, instance, validated_data):
-        illustration_id = validated_data.pop('illustration_id', None)
-        if illustration_id:
-            try:
-                image_asset = ImageAsset.objects.get(
-                    id=illustration_id,
-                    uploaded_by=self.context['request'].user
-                )
-                validated_data['illustration'] = image_asset.file
-            except ImageAsset.DoesNotExist:
-                raise serializers.ValidationError({"illustration_id": "Invalid image ID"})
-        elif illustration_id is None and 'illustration_id' in self.initial_data:
-            # If illustration_id is explicitly set to null, remove the illustration
-            validated_data['illustration'] = None
-
-        return super().update(instance, validated_data)
 
 
 class StoryPartTemplateSerializer(serializers.ModelSerializer):

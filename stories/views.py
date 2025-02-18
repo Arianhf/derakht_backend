@@ -36,6 +36,13 @@ class StoryTemplateViewSet(viewsets.ReadOnlyModelViewSet):
             activity_type=template.activity_type,
             story_template=template
         )
+        for story_part_template in template.template_parts.all():
+            StoryPart.objects.create(
+                story=story,
+                position=story_part_template.position,
+                    illustration=story_part_template.illustration,
+                story_part_template=story_part_template,
+            )
 
         # Return both story and template details
         return Response({
@@ -56,7 +63,6 @@ class StoryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     @method_decorator(csrf_exempt)
     def add_part(self, request, pk=None):
-        """Add a part to the story"""
         story = self.get_object()
         story_part_template_id = request.data.get('story_part_template_id')
 
@@ -73,58 +79,32 @@ class StoryViewSet(viewsets.ModelViewSet):
             )
 
         # Check if this position already has a part
-        if StoryPart.objects.filter(
+        if not StoryPart.objects.filter(
                 story=story,
-                position=story_part_template.position
+                story_part_template=story_part_template
         ).exists():
             return Response(
-                {'error': 'A part at this position already exists'},
+                {'error': "Story part doesn't exist"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        story_part = StoryPart.objects.get(story=story, template=story_part_template)
 
-        # Create serializer with the data
-        serializer = StoryPartSerializer(
-            data={
-                'text': request.data.get('text', ''),
-                'illustration_id': request.data.get('illustration_id'),
-                'story_part_template': story_part_template.id
-            },
-            context={'request': request}
-        )
+        if request.data.get('text'):
+            story_part.text = request.data.get('text')
 
-        if serializer.is_valid():
-            serializer.save(
-                story=story,
-                position=story_part_template.position
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if request.data.get('illustration'):
+            story_part.illustration = request.data.get('illustration')
 
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
+        story_part.save()
+        serializer = StoryPartSerializer(instance=story_part,)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
     @action(detail=True, methods=['post'])
     @method_decorator(csrf_exempt)
     def finish(self, request, pk=None):
-        """Mark the story as finished and set its final title"""
         story = self.get_object()
 
-        # Verify all template parts have corresponding story parts
-        template_parts_count = story.story_template.template_parts.count()
-        story_parts_count = story.parts.count()
-
-        if story_parts_count < template_parts_count:
-            missing_positions = set(
-                story.story_template.template_parts.values_list('position', flat=True)
-            ) - set(
-                story.parts.values_list('position', flat=True)
-            )
-            return Response({
-                'error': 'All story parts must be completed before finishing',
-                'missing_positions': list(missing_positions)
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # Update the title if provided
         title = request.data.get('title')
         if title:
             story.title = title
