@@ -87,7 +87,7 @@ class StoryViewSet(viewsets.ModelViewSet):
                 {'error': "Story part doesn't exist"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        story_part = StoryPart.objects.get(story=story, template=story_part_template)
+        story_part = StoryPart.objects.get(story=story, story_part_template=story_part_template)
 
         if request.data.get('text', None):
             story_part.text = request.data.get('text')
