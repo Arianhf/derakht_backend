@@ -1,12 +1,13 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 
 from .base import BaseModel
 from .product import Product
 from ..choices import OrderStatus, Currency
-from ..managers import OrderManager
+from ..managers import OrderManager, CartManager
 from ..order_management import OrderStatusTransition
 
 
@@ -43,6 +44,7 @@ class Order(BaseModel):
     tracking_code = models.CharField(_('Tracking Code'), max_length=100, blank=True)
 
     objects = OrderManager()
+    cart_objects = CartManager()
 
     class Meta:
         verbose_name = _('Order')
@@ -54,7 +56,7 @@ class Order(BaseModel):
 
     def calculate_total(self):
         """Calculate total amount from order items"""
-        total = sum(item.get_total_price() for item in self.items.all())
+        total = sum(item.total_price for item in self.items.all())
         self.total_amount = total
         self.save()
         return total
@@ -62,6 +64,10 @@ class Order(BaseModel):
     @property
     def total_items(self):
         """Get total number of items in order"""
+        result = self.items.aggregate(total=Sum('quantity'))
+        return result['total'] or 0
+
+    def product_count(self):
         return self.items.count()
 
     def transition_to(self, new_status: str) -> None:
@@ -137,7 +143,8 @@ class OrderItem(BaseModel):
     def __str__(self):
         return f"{self.quantity}x {self.product.title} in Order {self.order.id}"
 
-    def get_total_price(self):
+    @property
+    def total_price(self):
         """Calculate total price for this item"""
         return self.quantity * self.price
 

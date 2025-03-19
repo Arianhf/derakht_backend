@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models import Sum
 
-from .choices import OrderStatus
+from .choices import OrderStatus, Currency
 
 
 class OrderManager(models.Manager):

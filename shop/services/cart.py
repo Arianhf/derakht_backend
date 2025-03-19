@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
+from ..choices import OrderStatus
 from ..models import Order, OrderItem, Product
 
 User = get_user_model()
@@ -20,7 +21,7 @@ class CartService:
     def cart(self) -> Optional[Order]:
         """Get or create cart for user"""
         if self._cart is None and self.user is not None:
-            self._cart, _ = Order.objects.get_or_create_cart(self.user)
+            self._cart, _ = Order.cart_objects.get_or_create_cart(self.user)
         return self._cart
 
     def add_item(self, product: Product, quantity: int = 1) -> OrderItem:
@@ -45,7 +46,7 @@ class CartService:
         if cart_item.quantity > product.stock:
             raise ValidationError(_('Not enough stock available'))
 
-        cart_item.price = product.price  # Update to current price
+        cart_item.price = product.price
         cart_item.save()
 
         return cart_item
@@ -101,20 +102,22 @@ class CartService:
         """Get cart details"""
         if not self.cart:
             return {
+                'product_count': 0,
                 'items_count': 0,
                 'total_amount': 0,
                 'items': []
             }
 
         return {
-            'items_count': self.cart.items.count(),
+            'product_count': self.cart.product_count,
+            'items_count': self.cart.total_items,
             'total_amount': self.cart.total_amount,
             'items': [
                 {
                     'product': item.product,
                     'quantity': item.quantity,
                     'price': item.price,
-                    'total': item.get_total_price()
+                    'total': item.total_price
                 }
                 for item in self.cart.items.all()
             ]

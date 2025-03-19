@@ -1,5 +1,6 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from .models import (
@@ -9,35 +10,6 @@ from .models import (
     Invoice, InvoiceItem
 )
 
-
-@admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ['title', 'price', 'stock', 'is_available', 'created_at']
-    list_filter = ['is_available', 'created_at']
-    search_fields = ['title', 'description', 'sku']
-    prepopulated_fields = {'slug': ('title',)}
-    readonly_fields = ['created_at', 'updated_at']
-    fieldsets = (
-        (None, {
-            'fields': ('title', 'slug', 'description', 'price', 'stock', 'sku')
-        }),
-        (_('Status'), {
-            'fields': ('is_available', 'is_active')
-        }),
-        (_('SEO'), {
-            'fields': ('meta_title', 'meta_description'),
-            'classes': ('collapse',)
-        }),
-        (_('Timestamps'), {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        })
-    )
-
-
-class ProductImageInline(admin.TabularInline):
-    model = ProductImage
-    extra = 1
 
 
 class OrderItemInline(admin.TabularInline):
@@ -175,3 +147,57 @@ class InvoiceAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         })
     )
+
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 1
+    fields = ('image', 'alt_text', 'is_feature', 'image_preview')
+    readonly_fields = ('image_preview',)
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="100" height="100" />', obj.image.url)
+        return "No Image"
+
+    image_preview.short_description = _('Preview')
+
+
+
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ('title', 'price_display', 'age_range_admin', 'stock', 'is_available', 'created_at')
+    list_filter = ('is_available', 'created_at')
+    search_fields = ('title', 'description', 'sku')
+    prepopulated_fields = {'slug': ('title',)}
+    inlines = [ProductImageInline,]
+    readonly_fields = ('created_at', 'updated_at')
+
+    fieldsets = (
+        (_('Basic Information'), {
+            'fields': ('title', 'description', 'slug')
+        }),
+        (_('Pricing and Inventory'), {
+            'fields': ('price', 'stock', 'sku', 'is_available')
+        }),
+        (_('Age Range'), {
+            'fields': ('min_age', 'max_age')
+        }),
+        (_('SEO'), {
+            'fields': ('meta_title', 'meta_description'),
+            'classes': ('collapse',)
+        }),
+        (_('Timestamps'), {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def price_display(self, obj):
+        return f"{obj.price:,} IRR ({obj.price_in_toman:,} IRT)"
+
+    price_display.short_description = _('Price')
+
+    def age_range_admin(self, obj):
+        return obj.age_range_display or _('All Ages')
+
+    age_range_admin.short_description = _('Age Range')

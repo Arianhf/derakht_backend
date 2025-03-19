@@ -1,4 +1,6 @@
-from rest_framework import viewsets, status
+from django.db.models import Q
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -9,7 +11,7 @@ from .serializers import (
     PaymentSerializer,
     CartItemSerializer,
     CartDetailsSerializer,
-    OrderStatusHistorySerializer
+    OrderStatusHistorySerializer, ProductListSerializer, ProductDetailSerializer
 )
 from ..models import Order, Payment, Product
 from ..services import PaymentService, CartService
@@ -188,3 +190,81 @@ class CartViewSet(viewsets.ViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class ProductViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Product.objects.filter(is_active=True)
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['title', 'description', 'sku']
+    ordering_fields = ['price', 'created_at', 'title']
+    filterset_fields = ['is_available', 'min_age', 'max_age']
+    lookup_field = 'slug'
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return ProductListSerializer
+        return ProductDetailSerializer
+
+    @action(detail=False, methods=['get'])
+    def by_age(self, request):
+        """Filter products by age range"""
+        target_age = request.query_params.get('age')
+
+        if not target_age or not target_age.isdigit():
+            return Response(
+                {"error": "Please provide a valid age parameter"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        target_age = int(target_age)
+
+        # Find products where the target age falls within the product's age range
+        queryset = self.queryset.filter(
+            Q(min_age__lte=target_age, max_age__gte=target_age) |  # Within range
+            Q(min_age__lte=target_age, max_age__isnull=True) |  # Only min age defined
+            Q(min_age__isnull=True, max_age__gte=target_age) |  # Only max age defined
+            Q(min_age__isnull=True, max_age__isnull=True)  # No age limit
+        )
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = ProductListSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = ProductListSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def age_filter(self, request):
+        """Filter products by age range parameters (min_age and max_age)"""
+        min_age = request.query_params.get('min')
+        max_age = request.query_params.get('max')
+
+        if not min_age or not max_age or not min_age.isdigit() or not max_age.isdigit():
+            return Response(
+                {"error": "Please provide valid min and max age parameters"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        min_age = int(min_age)
+        max_age = int(max_age)
+
+        # Find products with overlapping age ranges
+        queryset = self.queryset.filter(
+            # Product range overlaps with requested range
+            (Q(min_age__lte=max_age) & Q(max_age__gte=min_age)) |
+            # No max age specified for product (e.g., 3+)
+            (Q(min_age__lte=max_age) & Q(max_age__isnull=True)) |
+            # No min age specified for product (e.g., 0-5)
+            (Q(min_age__isnull=True) & Q(max_age__gte=min_age)) |
+            # No age range specified for product
+            (Q(min_age__isnull=True) & Q(max_age__isnull=True))
+        )
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = ProductListSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = ProductListSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
