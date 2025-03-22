@@ -1,7 +1,20 @@
 from rest_framework import serializers
 
-from ..models import Order, OrderItem, Payment, ProductImage, Product
+from ..models import Order, OrderItem, ProductImage, Product, Category
 from ..models.order import OrderStatusHistory
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Category
+        fields = ["id", "name", "slug", "description", "parent", "image_url"]
+
+    def get_image_url(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -69,6 +82,13 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
+    price_in_toman = serializers.IntegerField(read_only=True)
+    age_range = serializers.CharField(read_only=True)
+    category = CategorySerializer(read_only=True)
+    category_id = serializers.UUIDField(
+        write_only=True, required=False, allow_null=True
+    )
+    images = ProductImageSerializer(many=True, read_only=True)
     feature_image = serializers.SerializerMethodField()
 
     class Meta:
@@ -78,84 +98,35 @@ class ProductSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "price",
+            "price_in_toman",
             "stock",
             "sku",
             "is_available",
             "slug",
-            "price_in_toman",
+            "meta_title",
+            "meta_description",
+            "min_age",
+            "max_age",
+            "age_range",
+            "category_id",
+            "category",
+            "images",
             "feature_image",
+            "created_at",
+            "updated_at",
         ]
 
     def get_feature_image(self, obj):
-        feature_image = obj.feature_image
-        if feature_image and feature_image.image:
-            return feature_image.image.get_rendition("original").url
-        return None
+        return obj.feature_image
 
 
-class OrderItemSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = OrderItem
-        fields = ["id", "product", "quantity", "price", "total_price"]
-        read_only_fields = ["price"]
-
-
-class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True, read_only=True)
+class ProductMinimalSerializer(serializers.ModelSerializer):
+    price_in_toman = serializers.IntegerField(read_only=True)
+    feature_image = serializers.SerializerMethodField()
 
     class Meta:
-        model = Order
-        fields = [
-            "id",
-            "status",
-            "total_amount",
-            "currency",
-            "shipping_address",
-            "phone_number",
-            "items",
-            "created_at",
-        ]
-        read_only_fields = ["status", "total_amount"]
+        model = Product
+        fields = ["id", "title", "price", "price_in_toman", "feature_image"]
 
-
-class PaymentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Payment
-        fields = [
-            "id",
-            "order",
-            "amount",
-            "status",
-            "payment_type",
-            "provider",
-            "reference_id",
-            "created_at",
-        ]
-
-
-class OrderStatusHistorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = OrderStatusHistory
-        fields = ["from_status", "to_status", "note", "created_at"]
-
-
-class CartItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer()
-    total_price = serializers.SerializerMethodField()
-
-    class Meta:
-        model = OrderItem
-        fields = ["product", "quantity", "price", "total_price"]
-
-    def get_total_price(self, obj):
-        if isinstance(obj, OrderItem):
-            return obj.total_price
-        else:
-            return obj["price"] * obj["quantity"]
-
-
-class CartDetailsSerializer(serializers.Serializer):
-    items_count = serializers.IntegerField()
-    product_count = serializers.IntegerField()
-    total_amount = serializers.DecimalField(max_digits=12, decimal_places=0)
-    items = CartItemSerializer(many=True)
+    def get_feature_image(self, obj):
+        return obj.feature_image

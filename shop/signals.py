@@ -1,8 +1,10 @@
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
-from .models import Order, OrderItem, Payment, Invoice, InvoiceItem
+from .models import Order, OrderItem
+from .models.invoice import Invoice, InvoiceItem
 from .models.order import OrderStatusHistory
+from .models.payment import Payment
 
 
 @receiver(post_save, sender=OrderItem)
@@ -14,7 +16,7 @@ def update_order_total(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Payment)
 def handle_payment_status_change(sender, instance, **kwargs):
     """Handle order status changes based on payment status"""
-    if instance.status == 'COMPLETED':
+    if instance.status == "COMPLETED":
         # Create invoice when payment is completed
         order = instance.order
         if not Invoice.objects.filter(order=order).exists():
@@ -24,7 +26,7 @@ def handle_payment_status_change(sender, instance, **kwargs):
                 total_amount=order.total_amount,
                 currency=order.currency,
                 shipping_address=order.shipping_address,
-                phone_number=order.phone_number
+                phone_number=order.phone_number,
             )
             # Create invoice items
             for order_item in order.items.all():
@@ -33,7 +35,7 @@ def handle_payment_status_change(sender, instance, **kwargs):
                     product_title=order_item.product.title,
                     product_sku=order_item.product.sku,
                     quantity=order_item.quantity,
-                    price=order_item.price
+                    price=order_item.price,
                 )
 
 
@@ -47,7 +49,7 @@ def track_order_status_change(sender, instance, **kwargs):
                 OrderStatusHistory.objects.create(
                     order=instance,
                     from_status=old_order.status,
-                    to_status=instance.status
+                    to_status=instance.status,
                 )
         except Order.DoesNotExist:
             pass

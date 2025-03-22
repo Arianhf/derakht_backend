@@ -1,17 +1,21 @@
+# shop/models/__init__.py
+
 from .base import BaseModel
-from .invoice import Invoice, InvoiceItem
-from .order import Order, OrderItem
-from .payment import Payment, PaymentTransaction
+from .cart import CartItem
 from .product import Product, ProductImage
+from .category import Category
+from .order import Order, OrderItem, ShippingInfo, PaymentInfo
+from .promo import PromoCode
 
 __all__ = [
-    'BaseModel',
-    'Product',
-    'ProductImage',
-    'Order',
-    'OrderItem',
-    'Payment',
-    'PaymentTransaction',
-    'Invoice',
-    'InvoiceItem',
+    "BaseModel",
+    "Product",
+    "ProductImage",
+    "Category",
+    "Order",
+    "OrderItem",
+    "CartItem",
+    "ShippingInfo",
+    "PaymentInfo",
+    "PromoCode",
 ]
