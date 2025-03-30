@@ -85,9 +85,9 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(CartItem)
 class CartItemAdmin(admin.ModelAdmin):
-    list_display = ("user", "product", "quantity", "price", "total_price")
+    list_display = ("product", "quantity", "price", "total_price")
     list_filter = ("created_at",)
-    search_fields = ("user__email", "product__title")
+    search_fields = ("product__title",)
 
 
 class OrderItemInline(admin.TabularInline):
@@ -200,8 +200,8 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ["id", "order", "amount", "status", "payment_type", "created_at"]
-    list_filter = ["status", "payment_type", "provider", "created_at"]
+    list_display = ["id", "order", "amount", "status", "created_at"]
+    list_filter = ["status", "gateway", "created_at"]
     search_fields = ["order__id", "reference_id"]
     readonly_fields = ["created_at", "updated_at"]
     inlines = [PaymentTransactionInline]
@@ -209,7 +209,7 @@ class PaymentAdmin(admin.ModelAdmin):
         (None, {"fields": ("order", "amount", "status", "currency")}),
         (
             _("Payment Details"),
-            {"fields": ("payment_type", "provider", "reference_id")},
+            {"fields": ("gateway", "reference_id")},
         ),
         (
             _("Timestamps"),
@@ -259,6 +259,6 @@ class ProductAdmin(admin.ModelAdmin):
     price_display.short_description = _("Price")
 
     def age_range_admin(self, obj):
-        return obj.age_range_display or _("All Ages")
+        return obj.age_range or _("All Ages")
 
     age_range_admin.short_description = _("Age Range")

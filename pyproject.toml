@@ -13,7 +13,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.12"
 django = "^5.1.2"
 psycopg2-binary = "^2.9.10"
 djangorestframework = "^3.15.2"
@@ -27,6 +27,7 @@ django-phonenumber-field = "^8.0.0"
 pillow = "^11.0.0"
 django-phonenumbers = "^1.0.1"
 django-cors-headers = "^4.6.0"
+zarinpal-py-sdk = "^0.1.0"
 
 
 [build-system]

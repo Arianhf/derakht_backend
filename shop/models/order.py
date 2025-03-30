@@ -110,6 +110,10 @@ class Order(BaseModel):
             self.status
         )
 
+    @property
+    def shipping_address(self):
+        return self.shipping_info.full_address
+
 
 class OrderItem(BaseModel):
     order = models.ForeignKey(
@@ -166,6 +170,10 @@ class ShippingInfo(BaseModel):
 
     def __str__(self):
         return f"Shipping info for Order {self.order.id}"
+
+    @property
+    def full_address(self):
+        return f"{self.address}, {self.city}, {self.province}, {self.postal_code}, {self.recipient_name}, {self.phone_number}"
 
 
 class PaymentInfo(BaseModel):

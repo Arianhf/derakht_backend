@@ -32,7 +32,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 class ProductListSerializer(serializers.ModelSerializer):
     feature_image = serializers.SerializerMethodField()
-    age_range = serializers.CharField(source="age_range_display", read_only=True)
+    age_range = serializers.CharField(source="age_range", read_only=True)
 
     class Meta:
         model = Product
@@ -58,7 +58,7 @@ class ProductListSerializer(serializers.ModelSerializer):
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
-    age_range = serializers.CharField(source="age_range_display", read_only=True)
+    age_range = serializers.CharField(source="age_range", read_only=True)
 
     class Meta:
         model = Product

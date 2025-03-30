@@ -14,28 +14,30 @@ from wagtail.models import Page, Orderable
 from wagtail.search import index
 
 from blog.panels import JalaliDatePanel
-from blog.serializers import CommaSeparatedListField, JalaliDateField, RichTextField as RichTextFieldSerializer
+from blog.serializers import (
+    CommaSeparatedListField,
+    JalaliDateField,
+    RichTextField as RichTextFieldSerializer,
+)
 from users.serializers import SmallUserSerializer
 
 
 class BlogIndexPage(Page):
     intro = RichTextField(blank=True)
 
-    content_panels = Page.content_panels + [
-        FieldPanel('intro')
-    ]
+    content_panels = Page.content_panels + [FieldPanel("intro")]
 
     def get_context(self, request):
         context = super().get_context(request)
-        blogposts = BlogPost.objects.child_of(self).live().order_by('-date')
+        blogposts = BlogPost.objects.child_of(self).live().order_by("-date")
 
         # Filter by tag
-        tag = request.GET.get('tag')
+        tag = request.GET.get("tag")
         if tag:
             blogposts = blogposts.filter(tags__slug=tag)
-            context['current_tag'] = tag
+            context["current_tag"] = tag
 
-        context['blogposts'] = blogposts
+        context["blogposts"] = blogposts
         return context
 
     def get_tag_url(self, tag):
@@ -44,9 +46,7 @@ class BlogIndexPage(Page):
 
 class BlogPostTag(TaggedItemBase):
     content_object = ParentalKey(
-        'BlogPost',
-        related_name='tagged_items',
-        on_delete=models.CASCADE
+        "BlogPost", related_name="tagged_items", on_delete=models.CASCADE
     )
 
 
@@ -55,15 +55,14 @@ class BlogPost(Page):
     subtitle = models.CharField(max_length=250, blank=True)
     intro = models.CharField(max_length=250)
     alternative_titles = models.TextField(
-        blank=True,
-        help_text="Enter alternative titles separated by commas"
+        blank=True, help_text="Enter alternative titles separated by commas"
     )
     header_image = models.ForeignKey(
-        'wagtailimages.Image',
+        "wagtailimages.Image",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name='+'
+        related_name="+",
     )
     body = RichTextField(blank=True)
     tags = ClusterTaggableManager(through=BlogPostTag, blank=True)
@@ -72,45 +71,47 @@ class BlogPost(Page):
         default=False,
     )
     hero = models.BooleanField(
-        default=False,
-        help_text="Only one blog post can be the hero at a time"
+        default=False, help_text="Only one blog post can be the hero at a time"
     )
 
     search_fields = Page.search_fields + [
-        index.SearchField('intro'),
-        index.SearchField('subtitle'),
-        index.SearchField('body'),
-        index.SearchField('alternative_titles'),
+        index.SearchField("intro"),
+        index.SearchField("subtitle"),
+        index.SearchField("body"),
+        index.SearchField("alternative_titles"),
     ]
 
     content_panels = Page.content_panels + [
-        MultiFieldPanel([
-            JalaliDatePanel('date'),
-            FieldPanel('subtitle'),
-            FieldPanel('alternative_titles'),
-            FieldPanel('featured'),
-            FieldPanel('hero'),
-        ], heading="Post Information"),
-        FieldPanel('intro'),
-        FieldPanel('header_image'),
-        FieldPanel('body'),
-        FieldPanel('tags'),
-        FieldPanel('reading_time'),
+        MultiFieldPanel(
+            [
+                JalaliDatePanel("date"),
+                FieldPanel("subtitle"),
+                FieldPanel("alternative_titles"),
+                FieldPanel("featured"),
+                FieldPanel("hero"),
+            ],
+            heading="Post Information",
+        ),
+        FieldPanel("intro"),
+        FieldPanel("header_image"),
+        FieldPanel("body"),
+        FieldPanel("tags"),
+        FieldPanel("reading_time"),
     ]
 
     api_fields = [
-        APIField('date', serializer=DateField(format='%d %B %Y')),
-        APIField('subtitle'),
-        APIField('intro'),
-        APIField('alternative_titles', serializer=CommaSeparatedListField()),
-        APIField('header_image'),
-        APIField('body', serializer=RichTextFieldSerializer()),
-        APIField('tags'),
-        APIField('jalali_date', serializer=JalaliDateField()),
-        APIField('reading_time'),
-        APIField('owner', serializer=SmallUserSerializer()),
-        APIField('featured'),
-        APIField('hero'),
+        APIField("date", serializer=DateField(format="%d %B %Y")),
+        APIField("subtitle"),
+        APIField("intro"),
+        APIField("alternative_titles", serializer=CommaSeparatedListField()),
+        APIField("header_image"),
+        APIField("body", serializer=RichTextFieldSerializer()),
+        APIField("tags"),
+        APIField("jalali_date", serializer=JalaliDateField()),
+        APIField("reading_time"),
+        APIField("owner", serializer=SmallUserSerializer()),
+        APIField("featured"),
+        APIField("hero"),
     ]
 
     def save(self, *args, **kwargs):
@@ -131,7 +132,7 @@ class BlogPost(Page):
     def get_alternative_titles_list(self):
         """Returns alternative titles as a list"""
         if self.alternative_titles:
-            return [title.strip() for title in self.alternative_titles.split(',')]
+            return [title.strip() for title in self.alternative_titles.split(",")]
         return []
 
     @property
@@ -149,24 +150,25 @@ class BlogPost(Page):
             "description": self.intro,
             "author": {
                 "@type": "Person",
-                "name": self.owner.get_full_name() if self.owner else "Anonymous"
+                "name": self.owner.get_full_name() if self.owner else "Anonymous",
             },
             "datePublished": self.date.isoformat(),
-            "dateModified": self.last_published_at.isoformat() if self.last_published_at else self.date.isoformat(),
-            "mainEntityOfPage": {
-                "@type": "WebPage",
-                "@id": self.get_full_url()
-            },
-            "url": self.get_full_url()
+            "dateModified": (
+                self.last_published_at.isoformat()
+                if self.last_published_at
+                else self.date.isoformat()
+            ),
+            "mainEntityOfPage": {"@type": "WebPage", "@id": self.get_full_url()},
+            "url": self.get_full_url(),
         }
 
         # Add image if exists
         if self.header_image:
             schema["image"] = {
                 "@type": "ImageObject",
-                "url": self.header_image.get_rendition('original').url,
+                "url": self.header_image.get_rendition("original").url,
                 "width": self.header_image.width,
-                "height": self.header_image.height
+                "height": self.header_image.height,
             }
 
         # Add tags if they exist
@@ -177,9 +179,11 @@ class BlogPost(Page):
 
     def get_sitemap_urls(self, request=None):
 
-        return [{
-            'location': self.get_full_url(),
-            'lastmod': self.last_published_at or self.latest_revision_created_at,
-            'changefreq': 'weekly',  # Options: always, hourly, daily, weekly, monthly, yearly, never
-            'priority': 0.8  # Homepage might be 1.0, less important pages 0.5 or lower
-        }]
+        return [
+            {
+                "location": self.get_full_url(),
+                "lastmod": self.last_published_at or self.latest_revision_created_at,
+                "changefreq": "weekly",  # Options: always, hourly, daily, weekly, monthly, yearly, never
+                "priority": 0.8,  # Homepage might be 1.0, less important pages 0.5 or lower
+            }
+        ]

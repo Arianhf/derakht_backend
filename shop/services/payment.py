@@ -1,55 +1,55 @@
-from typing import Dict, Any
+# shop/services/payment.py
 
-from ..choices import PaymentStatus, OrderStatus
-from ..gateways.zarinpal import ZarinpalGateway
-from ..models import Payment, Order
+from typing import Dict, Any, Optional
+
+from ..gateways.factory import PaymentGatewayFactory
+from ..models import Order, Payment
 
 
 class PaymentService:
-    def __init__(self):
-        self.gateway = ZarinpalGateway()
+    """Service for handling payments"""
 
-    def create_payment(self, order: Order) -> Payment:
-        return Payment.objects.create(
-            order=order,
-            amount=order.total_amount,
-            currency=order.currency
-        )
+    @classmethod
+    def request_payment(
+        cls, order: Order, gateway_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Request a payment for an order
 
-    def request_payment(self, payment: Payment) -> Dict[str, Any]:
-        result = self.gateway.request_payment(payment)
+        Args:
+            order: The order to pay for
+            gateway_name: The name of the payment gateway to use
 
-        if result.get('code') == 100:
-            payment.status = PaymentStatus.PROCESSING
-            payment.reference_id = result.get('authority')
-            payment.save()
+        Returns:
+            Dictionary with payment information and redirect URL
+        """
+        # Get the payment gateway
+        gateway = PaymentGatewayFactory.get_gateway(gateway_name)
 
-            return {
-                'success': True,
-                'redirect_url': self.gateway.get_payment_url(
-                    payment,
-                    result.get('authority')
-                )
-            }
+        # Request the payment
+        return gateway.request_payment(order)
 
-        payment.status = PaymentStatus.FAILED
-        payment.save()
-        return {'success': False, 'message': result.get('message')}
+    @classmethod
+    def verify_payment(
+        cls, payment: Payment, request_data: Dict, gateway_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Verify a payment
 
-    def verify_payment(self, payment: Payment, request_data: Dict) -> Dict[str, Any]:
-        result = self.gateway.verify_payment(payment, request_data)
+        Args:
+            payment: The payment to verify
+            request_data: Data from the payment gateway callback
+            gateway_name: The name of the payment gateway to use
 
-        if result.get('code') == 100:
-            payment.status = PaymentStatus.COMPLETED
-            payment.save()
+        Returns:
+            Dictionary with verification result
+        """
+        # If gateway_name is not provided, use the one from the payment
+        if gateway_name is None:
+            gateway_name = payment.gateway
 
-            # Update order status
-            order = payment.order
-            order.status = OrderStatus.CONFIRMED
-            order.save()
+        # Get the payment gateway
+        gateway = PaymentGatewayFactory.get_gateway(gateway_name)
 
-            return {'success': True, 'ref_id': result.get('ref_id')}
-
-        payment.status = PaymentStatus.FAILED
-        payment.save()
-        return {'success': False, 'message': result.get('message')}
+        # Verify the payment
+        return gateway.verify_payment(payment, request_data)

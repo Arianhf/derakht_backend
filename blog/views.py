@@ -18,20 +18,26 @@ class BlogPostAPIViewSet(PagesAPIViewSet):
         "hero",
         "jalali_date",
         "tags",
-        "subtitle"
+        "subtitle",
     ]
+
+    known_query_parameters = frozenset(
+        [
+            "tag",
+        ]
+    )
 
     def get_queryset(self):
         queryset = super().get_queryset().specific()
 
         # For the default list endpoint, exclude featured and hero posts
-        if self.action == 'listing_view':
+        if self.action == "listing_view" and not self.request.query_params:
             queryset = queryset.filter(featured=False, hero=False)
 
         return queryset
 
     # Fields to search
-    search_fields = ['title', 'subtitle', 'intro', 'body']
+    search_fields = ["title", "subtitle", "intro", "body"]
 
     def featured_view(self, request):
         queryset = self.get_queryset().filter(featured=True)
@@ -62,9 +68,7 @@ class BlogPostAPIViewSet(PagesAPIViewSet):
             path("find/", cls.as_view({"get": "find_view"}), name="find"),
             path("featured/", cls.as_view({"get": "featured_view"}), name="featured"),
             path("hero/", cls.as_view({"get": "hero_view"}), name="hero"),
-            # path('<slug:slug>/', cls.as_view({'get': 'detail_view'}), name='detail'),
         ]
-
 
     def get_serializer_class(self):
         request = self.request
@@ -97,8 +101,10 @@ class BlogPostAPIViewSet(PagesAPIViewSet):
             show_details=show_details,
         )
 
+
 class BlogIndexPageAPIViewSet(PagesAPIViewSet):
     # base_serializer_class = BlogPostSerializer
     authentication_classes = []
+
     def get_queryset(self):
         return super().get_queryset().specific()

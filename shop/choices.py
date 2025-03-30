@@ -34,8 +34,5 @@ class Currency(models.TextChoices):
     IRT = "IRT", _("Iranian Toman")
 
 
-class IPGProvider(models.TextChoices):
+class PaymentMethodProvider(models.TextChoices):
     ZARINPAL = "ZARINPAL", _("Zarinpal")
-    MELLAT = "MELLAT", _("Mellat")
-    SAMAN = "SAMAN", _("Saman")
-    PARSIAN = "PARSIAN", _("Parsian")
