@@ -40,8 +40,9 @@ class StoryTemplateViewSet(viewsets.ReadOnlyModelViewSet):
             StoryPart.objects.create(
                 story=story,
                 position=story_part_template.position,
-                    illustration=story_part_template.illustration,
+                illustration=story_part_template.illustration,
                 story_part_template=story_part_template,
+                text=story_part_template.prompt_text
             )
 
         # Return both story and template details
