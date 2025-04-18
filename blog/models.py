@@ -114,14 +114,6 @@ class BlogPost(Page):
         APIField("hero"),
     ]
 
-    def save(self, *args, **kwargs):
-        # If this post is being set as featured
-        if self.hero:
-            # Get all other featured posts
-            BlogPost.objects.exclude(pk=self.pk).filter(hero=True).update(hero=False)
-
-        super().save(*args, **kwargs)
-
     # Property to get Jalali date
     @property
     def jalali_date(self):

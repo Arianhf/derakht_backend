@@ -51,11 +51,15 @@ class BlogPostAPIViewSet(PagesAPIViewSet):
         return Response(serializer.data)
 
     def hero_view(self, request):
-        queryset = self.get_queryset().filter(hero=True).first()
-        if queryset:
-            serializer = self.get_serializer(queryset)
-            return Response(serializer.data)
-        return Response({})
+        queryset = self.get_queryset().filter(hero=True)
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     @classmethod
     def get_urlpatterns(cls):
