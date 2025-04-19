@@ -1,16 +1,17 @@
 from rest_framework import serializers
+from rest_framework.serializers import ModelSerializer
 from wagtail.rich_text import expand_db_html
 
 
 class CommaSeparatedListField(serializers.Field):
     def to_representation(self, value):
         if value:
-            return [item.strip() for item in value.split(',')]
+            return [item.strip() for item in value.split(",")]
         return []
 
     def to_internal_value(self, data):
         if isinstance(data, list):
-            return ', '.join(str(item).strip() for item in data)
+            return ", ".join(str(item).strip() for item in data)
         raise serializers.ValidationError("Expected a list of items")
 
 
@@ -18,7 +19,7 @@ class JalaliDateField(serializers.Field):
     def to_representation(self, value):
         if value:
             # Convert the Jalali date to string format
-            return value.strftime('%Y-%m-%d')
+            return value.strftime("%Y-%m-%d")
         return None
 
     def to_internal_value(self, data):
@@ -33,3 +34,10 @@ class RichTextField(serializers.Field):
 
     def to_internal_value(self, data):
         return data
+
+
+class BlogCategorySerializer(ModelSerializer):
+    class Meta:
+        model = "BlogCategory"
+        fields = ["id", "name", "slug", "description"]
+        read_only_fields = fields
