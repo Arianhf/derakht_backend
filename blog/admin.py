@@ -1,7 +1,7 @@
 from wagtail_modeladmin.options import ModelAdmin, modeladmin_register
 
 from stories.models import StoryCollection
-from .models import BlogPost
+from .models import BlogPost, BlogCategory
 
 
 class BlogPostAdmin(ModelAdmin):
@@ -14,6 +14,15 @@ class BlogPostAdmin(ModelAdmin):
     list_display = ('title', 'date', 'owner')
     search_fields = ('title', 'body')
 
+class BlogCategoryAdmin(ModelAdmin):
+    model = BlogCategory
+    menu_label = 'Blog Categories'
+    menu_icon = 'tag'
+    menu_order = 250  # Position it after Blog Posts
+    add_to_settings_menu = False
+    exclude_from_explorer = False
+    list_display = ('name', 'slug')
+    search_fields = ('name', 'description')
 
 class StoryCollectionAdmin(ModelAdmin):
     model = StoryCollection
@@ -28,3 +37,4 @@ class StoryCollectionAdmin(ModelAdmin):
 
 modeladmin_register(BlogPostAdmin)
 modeladmin_register(StoryCollectionAdmin)
+modeladmin_register(BlogCategoryAdmin)

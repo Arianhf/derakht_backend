@@ -1,10 +1,11 @@
 import json
 
+from django import forms
 import jdatetime
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from modelcluster.contrib.taggit import ClusterTaggableManager
-from modelcluster.fields import ParentalKey
+from modelcluster.fields import ParentalKey, ParentalManyToManyField
 from rest_framework.fields import DateField
 from taggit.models import TaggedItemBase
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
@@ -37,7 +38,21 @@ class BlogIndexPage(Page):
             blogposts = blogposts.filter(tags__slug=tag)
             context["current_tag"] = tag
 
+        # Filter by category
+        category_slug = request.GET.get("category")
+        if category_slug:
+            try:
+                category = BlogCategory.objects.get(slug=category_slug)
+                blogposts = blogposts.filter(categories=category)
+                context["current_category"] = category
+            except BlogCategory.DoesNotExist:
+                pass
+
         context["blogposts"] = blogposts
+
+        # Add all categories to context
+        context["categories"] = BlogCategory.objects.all()
+
         return context
 
     def get_tag_url(self, tag):
@@ -73,12 +88,19 @@ class BlogPost(Page):
     hero = models.BooleanField(
         default=False, help_text="Only one blog post can be the hero at a time"
     )
+    categories = ParentalManyToManyField("BlogCategory", blank=True)
 
     search_fields = Page.search_fields + [
         index.SearchField("intro"),
         index.SearchField("subtitle"),
         index.SearchField("body"),
         index.SearchField("alternative_titles"),
+        index.RelatedFields(
+            "categories",
+            [
+                index.SearchField("name"),
+            ],
+        ),
     ]
 
     content_panels = Page.content_panels + [
@@ -89,6 +111,7 @@ class BlogPost(Page):
                 FieldPanel("alternative_titles"),
                 FieldPanel("featured"),
                 FieldPanel("hero"),
+                FieldPanel("categories", widget=forms.CheckboxSelectMultiple),
             ],
             heading="Post Information",
         ),
@@ -112,6 +135,7 @@ class BlogPost(Page):
         APIField("owner", serializer=SmallUserSerializer()),
         APIField("featured"),
         APIField("hero"),
+        APIField("categories"),
     ]
 
     # Property to get Jalali date
@@ -167,6 +191,12 @@ class BlogPost(Page):
         if self.tags.all():
             schema["keywords"] = ", ".join([tag.name for tag in self.tags.all()])
 
+        # Add categories if they exist
+        if self.categories.exists():
+            schema["articleSection"] = [
+                category.name for category in self.categories.all()
+            ]
+
         return json.dumps(schema, cls=DjangoJSONEncoder)
 
     def get_sitemap_urls(self, request=None):
@@ -179,3 +209,40 @@ class BlogPost(Page):
                 "priority": 0.8,  # Homepage might be 1.0, less important pages 0.5 or lower
             }
         ]
+
+
+class BlogCategory(models.Model):
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(
+        verbose_name="slug",
+        allow_unicode=True,
+        max_length=255,
+        help_text="A slug to identify posts by this category",
+        unique=True,
+    )
+    description = models.TextField(blank=True)
+    icon = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    panels = [
+        FieldPanel("name"),
+        FieldPanel("slug"),
+        FieldPanel("description"),
+        FieldPanel("icon"),
+    ]
+
+    class Meta:
+        verbose_name = "Blog Category"
+        verbose_name_plural = "Blog Categories"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return f"/blog/category/{self.slug}/"
