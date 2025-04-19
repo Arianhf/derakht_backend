@@ -88,7 +88,9 @@ class BlogPost(Page):
     hero = models.BooleanField(
         default=False, help_text="Only one blog post can be the hero at a time"
     )
-    categories = ParentalManyToManyField("BlogCategory", blank=True)
+    categories = ParentalManyToManyField(
+        "BlogCategory", blank=True, related_name="blogposts"
+    )
 
     search_fields = Page.search_fields + [
         index.SearchField("intro"),

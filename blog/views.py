@@ -1,3 +1,4 @@
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -169,12 +170,31 @@ class BlogCategoryAPIViewSet(BaseAPIViewSet):
 
     def listing_view(self, request):
         queryset = self.get_queryset()
-        serializer = BlogCategorySerializer(queryset, many=True)
-        return Response(serializer.data)
+
+        # Get pagination parameters
+        page_number = request.GET.get("page", 1)
+        page_size = request.GET.get("size", 10)
+
+        # Paginate the queryset
+        paginator = Paginator(queryset, page_size)
+        page_obj = paginator.get_page(page_number)
+
+        # Serialize the data
+        serializer = BlogCategorySerializer(page_obj, many=True)
+
+        response_data = {
+            "items": serializer.data,
+            "total": paginator.count,
+            "page": int(page_number),
+            "size": int(page_size),
+        }
+
+        return Response(response_data)
 
     def detail_view(self, request, pk):
         instance = get_object_or_404(self.get_queryset(), pk=pk)
         serializer = BlogCategorySerializer(instance)
+
         return Response(serializer.data)
 
     @classmethod
