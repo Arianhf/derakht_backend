@@ -3,8 +3,9 @@ from django.templatetags.static import static
 from django.utils.html import format_html
 from wagtail import hooks
 from wagtail.admin.rich_text.converters.html_to_contentstate import (
-    InlineStyleElementHandler
+    InlineStyleElementHandler,
 )
+from blog.panels import Select2FieldPanel
 
 
 @hooks.register("register_rich_text_features")
@@ -21,14 +22,12 @@ def register_code_styling(features):
     }
 
     features.register_editor_plugin(
-        "draftail",
-        feature_name,
-        draftail_features.InlineStyleFeature(control)
+        "draftail", feature_name, draftail_features.InlineStyleFeature(control)
     )
 
     db_conversion = {
         "from_database_format": {tag: InlineStyleElementHandler(type_)},
-        "to_database_format": {"style_map": {type_: {"element": tag}}}
+        "to_database_format": {"style_map": {type_: {"element": tag}}},
     }
 
     features.register_converter_rule("contentstate", feature_name, db_conversion)
@@ -51,7 +50,7 @@ def register_centertext_feature(features):
         "style": {
             "display": "block",
             "text-align": "center",
-        }
+        },
     }
 
     features.register_editor_plugin(
@@ -60,15 +59,8 @@ def register_centertext_feature(features):
     db_conversion = {
         "from_database_format": {tag: InlineStyleElementHandler(type_)},
         "to_database_format": {
-            "style_map": {
-                type_: {
-                    "element": tag,
-                    "props": {
-                        "class": "text-center"
-                    }
-                }
-            }
-        }
+            "style_map": {type_: {"element": tag, "props": {"class": "text-center"}}}
+        },
     }
 
     features.register_converter_rule("contentstate", feature_name, db_conversion)
@@ -79,11 +71,7 @@ def register_centertext_feature(features):
 
 @hooks.register("register_icons")
 def register_icons(icons):
-    return icons + [
-        'blog/align-center.svg',
-        'blog/font.svg',
-        'blog/align-left.svg'
-    ]
+    return icons + ["blog/align-center.svg", "blog/font.svg", "blog/align-left.svg"]
 
 
 @hooks.register("register_rich_text_features")
@@ -100,7 +88,7 @@ def register_text_align_left(features):
         "style": {
             "display": "block",
             "text-align": "left",
-        }
+        },
     }
 
     features.register_editor_plugin(
@@ -110,15 +98,8 @@ def register_text_align_left(features):
     db_conversion = {
         "from_database_format": {tag: InlineStyleElementHandler(type_)},
         "to_database_format": {
-            "style_map": {
-                type_: {
-                    "element": tag,
-                    "props": {
-                        "class": "text-end"
-                    }
-                }
-            }
-        }
+            "style_map": {type_: {"element": tag, "props": {"class": "text-end"}}}
+        },
     }
 
     features.register_converter_rule("contentstate", feature_name, db_conversion)
@@ -138,9 +119,7 @@ def register_small_text(features):
         "type": type_,
         "icon": "minus",
         "description": "Small Text",
-        "style": {
-            "font-size": "1rem"
-        }
+        "style": {"font-size": "1rem"},
     }
 
     features.register_editor_plugin(
@@ -151,14 +130,9 @@ def register_small_text(features):
         "from_database_format": {tag: InlineStyleElementHandler(type_)},
         "to_database_format": {
             "style_map": {
-                type_: {
-                    "element": tag,
-                    "props": {
-                        "style": "font-size: 1rem"
-                    }
-                }
+                type_: {"element": tag, "props": {"style": "font-size: 1rem"}}
             }
-        }
+        },
     }
 
     features.register_converter_rule("contentstate", feature_name, db_conversion)
@@ -178,9 +152,7 @@ def register_normal_text(features):
         "type": type_,
         "icon": "font",
         "description": "Normal Text",
-        "style": {
-            "font-size": "1.1rem"
-        }
+        "style": {"font-size": "1.1rem"},
     }
 
     features.register_editor_plugin(
@@ -191,14 +163,9 @@ def register_normal_text(features):
         "from_database_format": {tag: InlineStyleElementHandler(type_)},
         "to_database_format": {
             "style_map": {
-                type_: {
-                    "element": tag,
-                    "props": {
-                        "style": "font-size: 1.1rem"
-                    }
-                }
+                type_: {"element": tag, "props": {"style": "font-size: 1.1rem"}}
             }
-        }
+        },
     }
 
     features.register_converter_rule("contentstate", feature_name, db_conversion)
@@ -218,9 +185,7 @@ def register_large_text(features):
         "type": type_,
         "icon": "plus",
         "description": "Large Text",
-        "style": {
-            "font-size": "1.2rem"
-        }
+        "style": {"font-size": "1.2rem"},
     }
 
     features.register_editor_plugin(
@@ -231,14 +196,9 @@ def register_large_text(features):
         "from_database_format": {tag: InlineStyleElementHandler(type_)},
         "to_database_format": {
             "style_map": {
-                type_: {
-                    "element": tag,
-                    "props": {
-                        "style": "font-size: 1.2rem"
-                    }
-                }
+                type_: {"element": tag, "props": {"style": "font-size: 1.2rem"}}
             }
-        }
+        },
     }
 
     features.register_converter_rule("contentstate", feature_name, db_conversion)
@@ -250,7 +210,9 @@ def register_large_text(features):
 @hooks.register("insert_global_admin_css", order=100)
 def global_admin_css():
     """Add /static/css/custom.css to the admin."""
-    return format_html(
-        '<link rel="stylesheet" href="{}">',
-        static("css/custom.css")
-    )
+    return format_html('<link rel="stylesheet" href="{}">', static("css/custom.css"))
+
+
+@hooks.register("register_field_panel_class")
+def register_select2_field_panel():
+    return Select2FieldPanel
