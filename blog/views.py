@@ -1,10 +1,13 @@
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from wagtail.api.v2.utils import parse_fields_parameter, BadRequestError
 from wagtail.api.v2.views import PagesAPIViewSet, BaseAPIViewSet
+from wagtail.models import Page
 from django.urls import path
 
 from blog.category_serializer import BlogCategorySerializer
@@ -206,3 +209,138 @@ class BlogCategoryAPIViewSet(BaseAPIViewSet):
             path("", cls.as_view({"get": "listing_view"}), name="listing"),
             path("<int:pk>/", cls.as_view({"get": "detail_view"}), name="detail"),
         ]
+
+
+# blog/views.py - Add this to your existing views file
+
+
+@api_view(
+    ["GET"],
+)
+@permission_classes((AllowAny,))
+def related_posts(request, post_id):
+    """
+    API endpoint to fetch related posts for a given blog post ID.
+
+    Returns posts in this priority:
+    1. Explicitly related posts
+    2. Posts with the same categories
+    3. Posts with the same tags
+    4. Most recent posts
+
+    Usage: /api/v2/related-posts/<post_id>/
+    """
+    try:
+        post_id = int(post_id)
+    except ValueError:
+        return Response({"error": "Invalid post ID format"}, status=400)
+
+    # Get the blog post
+    post = get_object_or_404(
+        Page.objects.specific(), id=post_id, content_type__model="blogpost"
+    )
+
+    # Make sure it's specifically a BlogPost
+    if not isinstance(post, BlogPost):
+        return Response({"error": "ID does not correspond to a blog post"}, status=400)
+
+    # Limit to a maximum of 3 related posts (or user-specified limit)
+    max_items = int(request.GET.get("limit", 3))
+    result = []
+    included_ids = [post.id]  # Start with current post ID
+
+    # Priority 1: Explicitly related posts
+    if hasattr(post, "related_posts") and post.related_posts.exists():
+        explicit_related = post.related_posts.live()
+        result.extend(format_posts(explicit_related, "explicit"))
+        included_ids.extend([p["id"] for p in result])
+
+        # If we have enough explicitly related posts, return them
+        if len(result) >= max_items:
+            return Response(result[:max_items])
+
+    # Priority 2: Posts with the same categories
+    if hasattr(post, "categories") and post.categories.exists():
+        needed = max_items - len(result)
+        category_posts = (
+            BlogPost.objects.live()
+            .filter(categories__in=post.categories.all())
+            .exclude(id__in=included_ids)
+            .distinct()
+            .order_by("-date")[:needed]
+        )
+
+        category_result = format_posts(category_posts, "category")
+        result.extend(category_result)
+        included_ids.extend([p["id"] for p in category_result])
+
+        if len(result) >= max_items:
+            return Response(result[:max_items])
+
+    # Priority 3: Posts with the same tags
+    if hasattr(post, "tags") and post.tags.exists():
+        needed = max_items - len(result)
+        tag_posts = (
+            BlogPost.objects.live()
+            .filter(tags__in=post.tags.all())
+            .exclude(id__in=included_ids)
+            .distinct()
+            .order_by("-date")[:needed]
+        )
+
+        tag_result = format_posts(tag_posts, "tag")
+        result.extend(tag_result)
+        included_ids.extend([p["id"] for p in tag_result])
+
+        if len(result) >= max_items:
+            return Response(result[:max_items])
+
+    # Priority 4: Recent posts (fallback)
+    needed = max_items - len(result)
+    if needed > 0:
+        recent_posts = (
+            BlogPost.objects.live()
+            .exclude(id__in=included_ids)
+            .order_by("-date")[:needed]
+        )
+
+        result.extend(format_posts(recent_posts, "recent"))
+
+    return Response(result[:max_items])
+
+
+def format_posts(posts, relationship_type):
+    """
+    Format a queryset of posts into a list of dictionaries for API response.
+
+    Args:
+        posts: A queryset of BlogPost objects
+        relationship_type: String indicating how these posts are related
+
+    Returns:
+        List of formatted post dictionaries
+    """
+    formatted_posts = []
+    for post in posts:
+        formatted_posts.append(
+            {
+                "id": post.id,
+                "title": post.title,
+                "slug": post.slug,
+                "intro": getattr(post, "intro", ""),
+                "header_image": (
+                    post.header_image.get_rendition("fill-400x300").url
+                    if hasattr(post, "header_image") and post.header_image
+                    else None
+                ),
+                "date": getattr(post, "date", None) and post.date.isoformat(),
+                "jalali_date": (
+                    post.jalali_date.strftime("%Y-%m-%d")
+                    if hasattr(post, "jalali_date") and post.jalali_date
+                    else None
+                ),
+                "reading_time": getattr(post, "reading_time", 0),
+                "relationship_type": relationship_type,
+            }
+        )
+    return formatted_posts

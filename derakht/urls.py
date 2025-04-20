@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -27,17 +28,17 @@ from blog.urls import router
 from derakht.views import robots_txt
 
 urlpatterns = [
-    path('robots.txt', robots_txt),
-    path('django-admin/', admin.site.urls),
-    path('admin/', include(wagtailadmin_urls)),
-    path('documents/', include(wagtaildocs_urls)),
-    path('api/users/', include('users.urls')),
-    path('api/stories/', include('stories.urls')),
-    path('api/v2/', router.urls),
-    path('sitemap.xml', sitemap),
-    path('api/shop/', include('shop.urls', namespace='shop')),
-
-    path('', include(wagtail_urls)),
+    path("robots.txt", robots_txt),
+    path("django-admin/", admin.site.urls),
+    path("admin/", include(wagtailadmin_urls)),
+    path("documents/", include(wagtaildocs_urls)),
+    path("api/users/", include("users.urls")),
+    path("api/stories/", include("stories.urls")),
+    path("api/v2/", router.urls),
+    path("", include("blog.urls")),
+    path("sitemap.xml", sitemap),
+    path("api/shop/", include("shop.urls", namespace="shop")),
+    path("", include(wagtail_urls)),
 ]
 
 if settings.DEBUG:
