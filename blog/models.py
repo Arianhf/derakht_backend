@@ -66,8 +66,8 @@ class BlogPostTag(TaggedItemBase):
 
 class BlogPost(Page):
     date = models.DateField("Post date")
-    subtitle = models.CharField(max_length=250, blank=True)
-    intro = models.CharField(max_length=250)
+    subtitle = models.CharField(max_length=500, blank=True)
+    intro = models.CharField(max_length=2000)
     alternative_titles = models.TextField(
         blank=True, help_text="Enter alternative titles separated by commas"
     )
