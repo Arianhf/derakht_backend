@@ -161,6 +161,7 @@ class BlogIndexPageAPIViewSet(PagesAPIViewSet):
 class BlogCategoryAPIViewSet(BaseAPIViewSet):
     """API endpoint for blog categories"""
 
+    authentication_classes = []
     model = BlogCategory
 
     def get_queryset(self):
