@@ -153,6 +153,7 @@ class BlogPostAPIViewSet(PagesAPIViewSet):
 class BlogIndexPageAPIViewSet(PagesAPIViewSet):
     # base_serializer_class = BlogPostSerializer
     authentication_classes = []
+    permission_classes = []
 
     def get_queryset(self):
         return super().get_queryset().specific()
@@ -161,6 +162,7 @@ class BlogIndexPageAPIViewSet(PagesAPIViewSet):
 class BlogCategoryAPIViewSet(BaseAPIViewSet):
     """API endpoint for blog categories"""
 
+    permission_classes = []
     authentication_classes = []
     model = BlogCategory
 
