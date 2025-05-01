@@ -75,6 +75,39 @@ class StoryViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Story.objects.filter(author=self.request.user)
 
+    @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
+    @method_decorator(csrf_exempt)
+    def upload_cover(self, request, pk=None):
+        """API endpoint to upload cover image for a story"""
+        story = self.get_object()
+
+        if "cover_image" not in request.FILES:
+            return Response(
+                {"error": "No cover image provided"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        story.cover_image = request.FILES["cover_image"]
+        story.save()
+
+        return Response(StorySerializer(story).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
+    @method_decorator(csrf_exempt)
+    def upload_background(self, request, pk=None):
+        """API endpoint to upload background image for a story"""
+        story = self.get_object()
+
+        if "background_image" not in request.FILES:
+            return Response(
+                {"error": "No background image provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        story.background_image = request.FILES["background_image"]
+        story.save()
+
+        return Response(StorySerializer(story).data, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=["post"])
     @method_decorator(csrf_exempt)
     def add_part(self, request, pk=None):
