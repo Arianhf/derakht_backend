@@ -177,11 +177,6 @@ REST_FRAMEWORK = {
 # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 # SECURE_HSTS_PRELOAD = True
 
-CSRF_TRUSTED_ORIGINS = [
-    os.environ.get("CSRF_TRUSTED_ORIGIN") or "https://derakht.darkube.app",
-    "https://derrakht.ir",
-]
-
 # MinIO settings
 DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 STATICFILES_STORAGE = "storages.backends.s3boto3.S3StaticStorage"
@@ -255,6 +250,14 @@ CORS_ALLOWED_ORIGINS = [
     "http://derrakht.ir",
     "https://derrakht.ir",
 ]
+
+csrf_trusted_origins_str = os.environ.get(
+    "CSRF_TRUSTED_ORIGINS", "https://derrakht.ir,https://derakht.darkube.app"
+)
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip() for origin in csrf_trusted_origins_str.split(",")
+]
+
 
 CORS_ALLOW_ALL_ORIGINS = True
 
