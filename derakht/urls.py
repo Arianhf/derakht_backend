@@ -26,6 +26,7 @@ from wagtail.documents import urls as wagtaildocs_urls
 
 from blog.urls import router
 from derakht.views import robots_txt
+from shop.urls import wagtail_api_router as shop_router
 
 urlpatterns = [
     path("robots.txt", robots_txt),
@@ -35,6 +36,7 @@ urlpatterns = [
     path("api/users/", include("users.urls")),
     path("api/stories/", include("stories.urls")),
     path("api/v2/", router.urls),
+    path("api/v2/", shop_router.urls),
     path("", include("blog.urls")),
     path("sitemap.xml", sitemap),
     path("api/shop/", include("shop.urls", namespace="shop")),

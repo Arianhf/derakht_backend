@@ -2,10 +2,15 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views.product import ProductViewSet, CategoryViewSet
+from wagtail.api.v2.router import WagtailAPIRouter
+
+from .views.product import (
+    ProductViewSet,
+    CategoryViewSet,
+    ProductInfoPageAPIViewSet,
+)
 from .views.cart import CartViewSet
 from .views.order import OrderViewSet
-from django.urls import path
 from .views.payment import (
     PaymentRequestView,
     PaymentCallbackView,
@@ -22,6 +27,10 @@ router.register(r"products", ProductViewSet, basename="product")
 router.register(r"categories", CategoryViewSet, basename="category")
 router.register(r"cart", CartViewSet, basename="cart")
 router.register(r"orders", OrderViewSet, basename="order")
+
+wagtail_api_router = WagtailAPIRouter("shop")
+wagtail_api_router.register_endpoint("product-info", ProductInfoPageAPIViewSet)
+
 
 urlpatterns = [
     path("", include(router.urls)),

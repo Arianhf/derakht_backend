@@ -2,6 +2,12 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from wagtail.admin.panels import FieldPanel
+from wagtail.api import APIField
+from wagtail.fields import RichTextField
+from wagtail.models import Page
+
+from blog.serializers import RichTextField as RichTextFieldSerializer
 from .base import BaseModel
 
 
@@ -98,3 +104,35 @@ class ProductImage(BaseModel):
                 id=self.id
             ).update(is_feature=False)
         super().save(*args, **kwargs)
+
+
+class ProductInfoPage(Page):
+    product_code = models.CharField(
+        max_length=50, help_text="Product code for QR code generation"
+    )
+    intro = models.CharField(max_length=250)
+
+    # Use RichTextField for regular text content
+    body = RichTextField(blank=True)
+
+    product_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    content_panels = Page.content_panels + [
+        FieldPanel("product_code"),
+        FieldPanel("intro"),
+        FieldPanel("product_image"),
+        FieldPanel("body"),
+    ]
+
+    api_fields = [
+        APIField("product_code"),
+        APIField("intro"),
+        APIField("product_image"),
+        APIField("body", serializer=RichTextFieldSerializer()),
+    ]

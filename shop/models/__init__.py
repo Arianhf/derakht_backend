@@ -2,7 +2,11 @@
 
 from .base import BaseModel
 from .cart import CartItem, Cart
-from .product import Product, ProductImage
+from .product import (
+    Product,
+    ProductImage,
+    ProductInfoPage,
+)
 from .category import Category
 from .order import Order, OrderItem, ShippingInfo, PaymentInfo
 from .promo import PromoCode
@@ -22,4 +26,5 @@ __all__ = [
     "PromoCode",
     "Payment",
     "PaymentTransaction",
+    "ProductInfoPage",
 ]

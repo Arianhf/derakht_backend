@@ -1,9 +1,13 @@
 # shop/views/product.py
+from django.urls import path
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from wagtail.api.v2.views import PagesAPIViewSet
+
 from ..models import Product, Category
+from ..models.product import ProductInfoPage
 from ..serializers.product import ProductSerializer, CategorySerializer
 
 
@@ -143,3 +147,54 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
+
+
+class ProductInfoPageAPIViewSet(PagesAPIViewSet):
+    model = ProductInfoPage
+    authentication_classes = []
+    permission_classes = []
+    listing_default_fields = PagesAPIViewSet.listing_default_fields + [
+        "product_code",
+        "intro",
+        "product_image",
+        "body",
+        "videos",
+    ]
+
+    def get_queryset(self):
+        return ProductInfoPage.objects.live().specific()
+
+    # Fields to search
+    search_fields = ["title", "intro", "body", "product_code"]
+
+    @action(detail=False, methods=["get"])
+    def by_product_code(self, request):
+        """
+        Return a product info page by product code
+        """
+        product_code = request.query_params.get("code")
+        if not product_code:
+            return Response({"error": "Product code is required"}, status=400)
+
+        try:
+            page = ProductInfoPage.objects.live().get(product_code=product_code)
+            serializer = self.get_serializer(page)
+            return Response(serializer.data)
+        except ProductInfoPage.DoesNotExist:
+            return Response({"error": "Product not found"}, status=404)
+
+    @classmethod
+    def get_urlpatterns(cls):
+        """
+        This returns a list of URL patterns for the endpoint
+        """
+        return [
+            path("", cls.as_view({"get": "listing_view"}), name="listing"),
+            path("<int:pk>/", cls.as_view({"get": "detail_view"}), name="detail"),
+            path("find/", cls.as_view({"get": "find_view"}), name="find"),
+            path(
+                "by-code/",
+                cls.as_view({"get": "by_product_code"}),
+                name="by_product_code",
+            ),
+        ]
