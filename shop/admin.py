@@ -13,6 +13,7 @@ from .models import (
     ShippingInfo,
     Category,
     CartItem,
+    Cart,
 )
 from .models.invoice import InvoiceItem, Invoice
 from .models.payment import PaymentTransaction, Payment
@@ -262,3 +263,27 @@ class ProductAdmin(admin.ModelAdmin):
         return obj.age_range or _("All Ages")
 
     age_range_admin.short_description = _("Age Range")
+
+
+class CartItemInline(admin.TabularInline):
+    model = CartItem
+    extra = 0
+    readonly_fields = ("product", "quantity", "price", "total_price")
+    raw_id_fields = ["product"]
+
+@admin.register(Cart)
+class CartAdmin(admin.ModelAdmin):
+    list_display = ["id", "user", "anonymous_id", "items_count", "total_amount", "last_activity"]
+    list_filter = ["created_at", "last_activity"]
+    search_fields = ["user__email", "anonymous_id"]
+    readonly_fields = ["created_at", "updated_at", "anonymous_id", "total_amount", "items_count"]
+    inlines = [CartItemInline]
+    fieldsets = (
+        (None, {"fields": ("user", "anonymous_id")}),
+        (_("Cart Information"), {"fields": ("total_amount", "items_count")}),
+        (_("Timestamps"), {"fields": ("last_activity", "created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+    def total_amount(self, obj):
+        return obj.total_amount
+    total_amount.short_description = _("Total Amount")

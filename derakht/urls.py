@@ -37,6 +37,7 @@ urlpatterns = [
     path("api/stories/", include("stories.urls")),
     path("api/v2/", router.urls),
     path("api/v2/", shop_router.urls),
+    path('api/v2/', include('core.urls')),
     path("", include("blog.urls")),
     path("sitemap.xml", sitemap),
     path("api/shop/", include("shop.urls", namespace="shop")),

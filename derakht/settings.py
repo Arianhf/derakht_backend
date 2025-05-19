@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "phonenumber_field",
     "rest_framework_simplejwt",
     "users",
+    "core",
 ]
 
 MIDDLEWARE = [
