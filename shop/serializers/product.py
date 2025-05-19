@@ -40,7 +40,6 @@ class ProductListSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "price",
-            "price_in_toman",
             "is_available",
             "feature_image",
             "min_age",
@@ -67,7 +66,6 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "price",
-            "price_in_toman",
             "stock",
             "sku",
             "is_available",
@@ -82,7 +80,6 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    price_in_toman = serializers.IntegerField(read_only=True)
     age_range = serializers.CharField(read_only=True)
     category = CategorySerializer(read_only=True)
     category_id = serializers.UUIDField(
@@ -98,7 +95,6 @@ class ProductSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "price",
-            "price_in_toman",
             "stock",
             "sku",
             "is_available",
@@ -124,12 +120,11 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class ProductMinimalSerializer(serializers.ModelSerializer):
-    price_in_toman = serializers.IntegerField(read_only=True)
     feature_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ["id", "title", "price", "price_in_toman", "feature_image"]
+        fields = ["id", "title", "price", "feature_image"]
 
     def get_feature_image(self, obj):
         feature_image = obj.feature_image

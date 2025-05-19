@@ -80,7 +80,7 @@ class ProductAdmin(ModelAdmin):
     ]
 
     def price_display(self, obj):
-        return f"{obj.price:,} IRR ({obj.price_in_toman:,} IRT)"
+        return f"{obj.price:,} IRT"
 
     price_display.short_description = _("Price")
 

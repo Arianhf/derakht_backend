@@ -49,9 +49,6 @@ class Product(BaseModel):
     def is_in_stock(self):
         return self.stock > 0
 
-    @property
-    def price_in_toman(self):
-        return int(self.price / 10)
 
     @property
     def age_range(self):
