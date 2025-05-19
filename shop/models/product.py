@@ -67,8 +67,6 @@ class Product(BaseModel):
         if not feature_image and self.images.exists():
             # Fallback to first image if no featured image is set
             feature_image = self.images.first()
-        else:
-            feature_image = None
         return feature_image
 
 

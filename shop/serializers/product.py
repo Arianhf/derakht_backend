@@ -117,7 +117,10 @@ class ProductSerializer(serializers.ModelSerializer):
         ]
 
     def get_feature_image(self, obj):
-        return obj.feature_image
+        feature_image = obj.feature_image
+        if feature_image and feature_image.image:
+            return feature_image.image.get_rendition("original").url
+        return None
 
 
 class ProductMinimalSerializer(serializers.ModelSerializer):
@@ -129,4 +132,7 @@ class ProductMinimalSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "price", "price_in_toman", "feature_image"]
 
     def get_feature_image(self, obj):
-        return obj.feature_image
+        feature_image = obj.feature_image
+        if feature_image and feature_image.image:
+            return feature_image.image.get_rendition("original").url
+        return None
