@@ -37,3 +37,4 @@ staticfiles
 
 # Local settings
 local_settings.py
+/.env.dev
