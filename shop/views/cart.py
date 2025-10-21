@@ -117,14 +117,14 @@ class CartViewSet(viewsets.ViewSet):
             if not product.is_available:
                 return Response(
                     {"error": "Product is not available"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 )
 
             # Check if product is in stock
             if product.stock < quantity:
                 return Response(
                     {"error": "Not enough stock available"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 )
 
             # Get the appropriate cart
@@ -141,7 +141,7 @@ class CartViewSet(viewsets.ViewSet):
                 if cart_item.quantity > product.stock:
                     return Response(
                         {"error": "Not enough stock available"},
-                        status=status.HTTP_400_BAD_REQUEST,
+                        status=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     )
                 cart_item.save()
 
@@ -201,14 +201,14 @@ class CartViewSet(viewsets.ViewSet):
         if not product.is_available:
             return Response(
                 {"error": "Product is not available"},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
         # Check if product is in stock
         if product.stock < quantity:
             return Response(
                 {"error": "Not enough stock available"},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
         # Update cart item
