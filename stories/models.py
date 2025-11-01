@@ -1,7 +1,20 @@
+import re
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
+
+
+def validate_hex_color(value):
+    """Validate that the value is a valid hex color code"""
+    if not value:
+        return
+    hex_color_regex = r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$'
+    if not re.match(hex_color_regex, value):
+        raise ValidationError(
+            f'{value} is not a valid hex color code. Use format #RRGGBB or #RGB'
+        )
 
 
 class ActivityType(models.TextChoices):
@@ -43,8 +56,19 @@ class Story(models.Model):
         blank=True,
     )
     cover_image = models.ImageField(upload_to="stories/covers/", null=True, blank=True)
-    background_image = models.ImageField(
-        upload_to="stories/backgrounds/", null=True, blank=True
+    background_color = models.CharField(
+        max_length=7,
+        null=True,
+        blank=True,
+        validators=[validate_hex_color],
+        help_text="Hex color code (e.g., #FF5733 or #FFF)",
+    )
+    font_color = models.CharField(
+        max_length=7,
+        null=True,
+        blank=True,
+        validators=[validate_hex_color],
+        help_text="Hex color code for text (e.g., #000000 or #000)",
     )
 
     class Meta:

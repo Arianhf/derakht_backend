@@ -92,23 +92,29 @@ class StoryAdmin(admin.ModelAdmin):
         "activity_type",
         "created_date",
         "has_cover_image",
-        "has_background_image",
+        "background_color",
+        "font_color",
     ]
     list_filter = ["activity_type", "created_date"]
     search_fields = ["title", "author"]
     inlines = [StoryPartInline]
+    readonly_fields = ["created_date"]
+    fields = [
+        "title",
+        "author",
+        "activity_type",
+        "story_template",
+        "cover_image",
+        "background_color",
+        "font_color",
+        "created_date",
+    ]
 
     def has_cover_image(self, obj):
         return bool(obj.cover_image)
 
-    def has_background_image(self, obj):
-        return bool(obj.background_image)
-
     has_cover_image.boolean = True
     has_cover_image.short_description = "Has Cover Image"
-
-    has_background_image.boolean = True
-    has_background_image.short_description = "Has Background Image"
 
 
 @admin.register(StoryCollection)

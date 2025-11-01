@@ -76,7 +76,6 @@ class StorySerializer(serializers.ModelSerializer):
     parts = StoryPartSerializer(many=True, read_only=True)
     author = serializers.PrimaryKeyRelatedField(read_only=True)
     cover_image = serializers.SerializerMethodField()
-    background_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Story
@@ -89,18 +88,14 @@ class StorySerializer(serializers.ModelSerializer):
             "story_template",
             "parts",
             "cover_image",
-            "background_image",
+            "background_color",
+            "font_color",
         ]
         read_only_fields = ["author", "activity_type", "story_template"]
 
     def get_cover_image(self, obj):
         if obj.cover_image:
             return obj.cover_image.url
-        return None
-
-    def get_background_image(self, obj):
-        if obj.background_image:
-            return obj.background_image.url
         return None
 
 
