@@ -160,13 +160,13 @@ class BlogPostAPIViewSet(PagesAPIViewSet):
         """
         return [
             path("", cls.as_view({"get": "listing_view"}), name="listing"),
+            path("featured/", cls.as_view({"get": "featured_view"}), name="featured"),
+            path("hero/", cls.as_view({"get": "hero_view"}), name="hero"),
+            path("category/", cls.as_view({"get": "by_category"}), name="by_category"),
             path("slugs/", cls.as_view({"get": "slugs"}), name="slugs"),
             path("<int:pk>/", cls.as_view({"get": "detail_view"}), name="detail"),
             path("<str:pk>/", cls.as_view({"get": "detail_view"}), name="detail_by_slug"),
             path("find/", cls.as_view({"get": "find_view"}), name="find"),
-            path("featured/", cls.as_view({"get": "featured_view"}), name="featured"),
-            path("hero/", cls.as_view({"get": "hero_view"}), name="hero"),
-            path("category/", cls.as_view({"get": "by_category"}), name="by_category"),
         ]
 
     def get_serializer_class(self):
