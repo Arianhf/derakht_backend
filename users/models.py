@@ -28,8 +28,28 @@ class User(AbstractUser):
     is_verified = models.BooleanField(default=False)
     email_verification_token = models.CharField(max_length=255, null=True, blank=True)
 
+    # Author/SEO fields
+    bio = models.TextField(
+        blank=True,
+        help_text="Short author biography (100-200 characters recommended)"
+    )
+    social_links = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Social media links as JSON: {\"twitter\": \"url\", \"instagram\": \"url\", \"linkedin\": \"url\"}"
+    )
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username", "first_name", "last_name", "age"]
+
+    def get_profile_url(self):
+        """Generate URL to author's profile page"""
+        if self.first_name and self.last_name:
+            # Create a slug from the full name
+            from django.utils.text import slugify
+            name_slug = slugify(f"{self.first_name}-{self.last_name}", allow_unicode=True)
+            return f"/authors/{name_slug}"
+        return None
 
     def clean(self):
         super().clean()

@@ -10,9 +10,32 @@ User = get_user_model()
 
 
 class SmallUserSerializer(serializers.ModelSerializer):
+    """Enhanced serializer for blog post authors with SEO-friendly fields"""
+    full_name = serializers.SerializerMethodField()
+    profile_url = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ("first_name", "last_name", "age", "profile_image")
+        fields = (
+            "id",
+            "first_name",
+            "last_name",
+            "full_name",
+            "age",
+            "profile_image",
+            "bio",
+            "profile_url",
+            "email",
+            "social_links",
+        )
+
+    def get_full_name(self, obj):
+        """Return the user's full name"""
+        return obj.get_full_name()
+
+    def get_profile_url(self, obj):
+        """Return the URL to the author's profile page"""
+        return obj.get_profile_url()
 
 
 class UserSerializer(serializers.ModelSerializer):
