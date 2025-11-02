@@ -28,6 +28,12 @@ class BlogPostAPIViewSet(PagesAPIViewSet):
         "tags",
         "subtitle",
         "categories",
+        "excerpt",
+        "published_date",
+        "updated_date",
+        "word_count",
+        "meta_title",
+        "meta_description",
     ]
 
     known_query_parameters = frozenset(
@@ -104,6 +110,49 @@ class BlogPostAPIViewSet(PagesAPIViewSet):
         except BlogCategory.DoesNotExist:
             return Response({"error": "Category not found"}, status=404)
 
+    def detail_view(self, request, pk=None):
+        """
+        Override detail_view to support both ID and slug-based retrieval
+        """
+        # Try to parse pk as integer
+        try:
+            pk_int = int(pk)
+            # It's a numeric ID, use default behavior
+            return super().detail_view(request, pk_int)
+        except (ValueError, TypeError):
+            # It's a slug, look up by slug
+            queryset = self.get_queryset()
+            try:
+                instance = queryset.get(slug=pk)
+                serializer = self.get_serializer(instance)
+                return Response(serializer.data)
+            except BlogPost.DoesNotExist:
+                return Response({"error": "Post not found"}, status=404)
+
+    @action(detail=False, methods=["get"])
+    def slugs(self, request):
+        """
+        Return all post slugs with updated dates for sitemap generation
+        """
+        posts = BlogPost.objects.live().only("slug", "last_published_at", "first_published_at", "date")
+
+        items = []
+        for post in posts:
+            # Use last_published_at if available, otherwise use date
+            updated = post.last_published_at if post.last_published_at else None
+            if not updated and post.first_published_at:
+                updated = post.first_published_at
+
+            items.append({
+                "slug": post.slug,
+                "updated_date": updated.isoformat().replace('+00:00', 'Z') if updated else None
+            })
+
+        return Response({
+            "items": items,
+            "total": len(items)
+        })
+
     @classmethod
     def get_urlpatterns(cls):
         """
@@ -111,7 +160,9 @@ class BlogPostAPIViewSet(PagesAPIViewSet):
         """
         return [
             path("", cls.as_view({"get": "listing_view"}), name="listing"),
+            path("slugs/", cls.as_view({"get": "slugs"}), name="slugs"),
             path("<int:pk>/", cls.as_view({"get": "detail_view"}), name="detail"),
+            path("<str:pk>/", cls.as_view({"get": "detail_view"}), name="detail_by_slug"),
             path("find/", cls.as_view({"get": "find_view"}), name="find"),
             path("featured/", cls.as_view({"get": "featured_view"}), name="featured"),
             path("hero/", cls.as_view({"get": "hero_view"}), name="hero"),

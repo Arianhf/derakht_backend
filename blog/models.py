@@ -94,6 +94,38 @@ class BlogPost(Page):
         "self", blank=True, symmetrical=False, related_name="posts_related_to"
     )
 
+    # SEO Fields
+    excerpt = models.TextField(
+        blank=True,
+        help_text="Short summary for post previews (150-200 characters)."
+    )
+    word_count = models.PositiveIntegerField(
+        default=0,
+        blank=True,
+        help_text="Auto-calculated from body content"
+    )
+    canonical_url = models.URLField(
+        max_length=500,
+        blank=True,
+        help_text="Canonical URL if content exists elsewhere"
+    )
+    og_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Custom Open Graph image for social media sharing. Falls back to header_image if not provided."
+    )
+    featured_snippet = models.TextField(
+        blank=True,
+        help_text="Optimized content for Google featured snippets (40-60 words)"
+    )
+    noindex = models.BooleanField(
+        default=False,
+        help_text="Prevent search engines from indexing this post"
+    )
+
     search_fields = Page.search_fields + [
         index.SearchField("intro"),
         index.SearchField("subtitle"),
@@ -127,26 +159,48 @@ class BlogPost(Page):
             heading="Post Information",
         ),
         FieldPanel("intro"),
+        FieldPanel("excerpt"),
         FieldPanel("header_image"),
         FieldPanel("body"),
         FieldPanel("tags"),
         FieldPanel("reading_time"),
+        MultiFieldPanel(
+            [
+                FieldPanel("canonical_url"),
+                FieldPanel("og_image"),
+                FieldPanel("featured_snippet"),
+                FieldPanel("noindex"),
+            ],
+            heading="SEO Settings",
+            classname="collapsible collapsed",
+        ),
     ]
 
     api_fields = [
         APIField("date", serializer=DateField(format="%d %B %Y")),
         APIField("subtitle"),
         APIField("intro"),
+        APIField("excerpt"),
         APIField("alternative_titles", serializer=CommaSeparatedListField()),
         APIField("header_image"),
         APIField("body", serializer=RichTextFieldSerializer()),
         APIField("tags"),
         APIField("jalali_date", serializer=JalaliDateField()),
+        APIField("published_date"),
+        APIField("updated_date"),
         APIField("reading_time"),
+        APIField("word_count"),
         APIField("owner", serializer=SmallUserSerializer()),
         APIField("featured"),
         APIField("hero"),
         APIField("categories"),
+        # SEO fields
+        APIField("seo_title"),
+        APIField("search_description"),
+        APIField("canonical_url"),
+        APIField("og_image"),
+        APIField("featured_snippet"),
+        APIField("noindex"),
     ]
 
     # Property to get Jalali date
@@ -155,6 +209,44 @@ class BlogPost(Page):
         if self.date:
             return jdatetime.date.fromgregorian(date=self.date)
         return None
+
+    # Property to get published date in ISO 8601 format
+    @property
+    def published_date(self):
+        if self.date:
+            # Combine date with a default time (midnight) and return ISO format
+            from datetime import datetime, time
+            return datetime.combine(self.date, time.min).isoformat() + "Z"
+        return None
+
+    # Property to get updated date in ISO 8601 format
+    @property
+    def updated_date(self):
+        if self.last_published_at:
+            # Only return if post has been modified after initial publication
+            if self.first_published_at and self.last_published_at > self.first_published_at:
+                return self.last_published_at.isoformat().replace('+00:00', 'Z')
+        return None
+
+    def calculate_word_count(self):
+        """Calculate word count from body content"""
+        from wagtail.rich_text import expand_db_html
+        from django.utils.html import strip_tags
+
+        if self.body:
+            # Convert rich text to HTML, then strip tags to get plain text
+            html_content = expand_db_html(self.body)
+            plain_text = strip_tags(html_content)
+            # Count words
+            words = plain_text.split()
+            return len(words)
+        return 0
+
+    def save(self, *args, **kwargs):
+        # Auto-calculate word count if body exists
+        if self.body:
+            self.word_count = self.calculate_word_count()
+        super().save(*args, **kwargs)
 
     def get_alternative_titles_list(self):
         """Returns alternative titles as a list"""
@@ -240,11 +332,24 @@ class BlogCategory(models.Model):
         related_name="+",
     )
 
+    # SEO Fields
+    meta_title = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="SEO title for category page (50-60 characters recommended)"
+    )
+    meta_description = models.TextField(
+        blank=True,
+        help_text="SEO description for category page (150-160 characters recommended)"
+    )
+
     panels = [
         FieldPanel("name"),
         FieldPanel("slug"),
         FieldPanel("description"),
         FieldPanel("icon"),
+        FieldPanel("meta_title"),
+        FieldPanel("meta_description"),
     ]
 
     class Meta:

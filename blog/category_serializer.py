@@ -8,7 +8,16 @@ class BlogCategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BlogCategory
-        fields = ["id", "name", "slug", "description", "icon", "post_count"]
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "description",
+            "icon",
+            "post_count",
+            "meta_title",
+            "meta_description",
+        ]
         read_only_fields = fields
 
     def get_post_count(self, obj):
