@@ -95,18 +95,9 @@ class BlogPost(Page):
     )
 
     # SEO Fields
-    meta_title = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="Custom SEO title (50-60 characters recommended). Falls back to page title if not provided."
-    )
-    meta_description = models.TextField(
-        blank=True,
-        help_text="SEO description for search results (150-160 characters recommended)"
-    )
     excerpt = models.TextField(
         blank=True,
-        help_text="Short summary for post previews (150-200 characters). Different from meta_description."
+        help_text="Short summary for post previews (150-200 characters)."
     )
     word_count = models.PositiveIntegerField(
         default=0,
@@ -175,8 +166,6 @@ class BlogPost(Page):
         FieldPanel("reading_time"),
         MultiFieldPanel(
             [
-                FieldPanel("meta_title"),
-                FieldPanel("meta_description"),
                 FieldPanel("canonical_url"),
                 FieldPanel("og_image"),
                 FieldPanel("featured_snippet"),
@@ -206,8 +195,8 @@ class BlogPost(Page):
         APIField("hero"),
         APIField("categories"),
         # SEO fields
-        APIField("meta_title"),
-        APIField("meta_description"),
+        APIField("seo_title"),
+        APIField("search_description"),
         APIField("canonical_url"),
         APIField("og_image"),
         APIField("featured_snippet"),
