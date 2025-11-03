@@ -164,10 +164,8 @@ def global_search(request):
     paginator = PageNumberPagination()
     paginator.page_size = page_size
 
-    # Use request to paginate
-    from rest_framework.request import Request
-    drf_request = Request(request)
-    paginated_results = paginator.paginate_queryset(all_results, drf_request)
+    # Paginate the results
+    paginated_results = paginator.paginate_queryset(all_results, request)
 
     return paginator.get_paginated_response({
         'query': query,
