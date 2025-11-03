@@ -1,6 +1,6 @@
 # core/views.py
 from django.contrib.postgres.search import TrigramSimilarity
-from django.db.models import Q, Value, FloatField
+from django.db.models import Q, Value, FloatField, CharField
 from django.db.models.functions import Greatest
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -84,7 +84,7 @@ def global_search(request):
         'hero',
         'reading_time',
     ).annotate(
-        type=Value('blog', output_field=FloatField())
+        type=Value('blog', output_field=CharField())
     )
 
     # Search products using trigram similarity
@@ -114,7 +114,7 @@ def global_search(request):
         'stock',
         'is_available',
     ).annotate(
-        type=Value('product', output_field=FloatField())
+        type=Value('product', output_field=CharField())
     )
 
     # Combine results
