@@ -60,7 +60,7 @@ def global_search(request):
         threshold = 0.1
 
     # Search blogs using trigram similarity
-    blog_results = BlogPost.objects.live().annotate(
+    blog_results = BlogPost.objects.live().select_related('header_image').annotate(
         title_similarity=TrigramSimilarity('title', query),
         subtitle_similarity=TrigramSimilarity('subtitle', query),
         intro_similarity=TrigramSimilarity('intro', query),
@@ -72,26 +72,13 @@ def global_search(request):
         )
     ).filter(
         similarity__gte=threshold
-    ).values(
-        'id',
-        'title',
-        'subtitle',
-        'intro',
-        'slug',
-        'date',
-        'similarity',
-        'featured',
-        'hero',
-        'reading_time',
-    ).annotate(
-        type=Value('blog', output_field=CharField())
     )
 
     # Search products using trigram similarity
     product_results = Product.objects.filter(
         is_active=True,
         is_available=True
-    ).annotate(
+    ).prefetch_related('images').annotate(
         title_similarity=TrigramSimilarity('title', query),
         description_similarity=TrigramSimilarity('description', query),
         sku_similarity=TrigramSimilarity('sku', query),
@@ -103,55 +90,66 @@ def global_search(request):
         )
     ).filter(
         similarity__gte=threshold
-    ).values(
-        'id',
-        'title',
-        'description',
-        'slug',
-        'price',
-        'sku',
-        'similarity',
-        'stock',
-        'is_available',
-    ).annotate(
-        type=Value('product', output_field=CharField())
     )
 
     # Combine results
-    blog_list = [
-        {
-            'id': item['id'],
-            'type': 'blog',
-            'title': item['title'],
-            'subtitle': item.get('subtitle', ''),
-            'description': item['intro'],
-            'slug': item['slug'],
-            'date': item['date'],
-            'similarity': round(item['similarity'], 3),
-            'featured': item['featured'],
-            'hero': item['hero'],
-            'reading_time': item['reading_time'],
-            'url': f'/blog/{item["slug"]}/'
-        }
-        for item in blog_results
-    ]
+    blog_list = []
+    for blog in blog_results:
+        # Get header image URL if it exists
+        header_image_url = None
+        if blog.header_image:
+            try:
+                # Get a medium-sized rendition for the search results
+                rendition = blog.header_image.get_rendition('fill-400x300')
+                header_image_url = rendition.url
+            except:
+                # Fallback to original if rendition fails
+                header_image_url = blog.header_image.file.url if blog.header_image.file else None
 
-    product_list = [
-        {
-            'id': item['id'],
+        blog_list.append({
+            'id': blog.id,
+            'type': 'blog',
+            'title': blog.title,
+            'subtitle': blog.subtitle or '',
+            'description': blog.intro,
+            'slug': blog.slug,
+            'date': blog.date,
+            'similarity': round(blog.similarity, 3),
+            'featured': blog.featured,
+            'hero': blog.hero,
+            'reading_time': blog.reading_time,
+            'header_image': header_image_url,
+            'url': f'/blog/{blog.slug}/'
+        })
+
+    product_list = []
+    for product in product_results:
+        # Get feature image URL if it exists
+        feature_image_url = None
+        feature_img = product.feature_image
+        if feature_img and feature_img.image:
+            try:
+                # Get a medium-sized rendition for the search results
+                rendition = feature_img.image.get_rendition('fill-400x300')
+                feature_image_url = rendition.url
+            except:
+                # Fallback to original if rendition fails
+                feature_image_url = feature_img.image.file.url if feature_img.image.file else None
+
+        product_list.append({
+            'id': product.id,
             'type': 'product',
-            'title': item['title'],
-            'description': item['description'],
-            'slug': item['slug'],
-            'price': str(item['price']),
-            'sku': item['sku'],
-            'similarity': round(item['similarity'], 3),
-            'stock': item['stock'],
-            'is_available': item['is_available'],
-            'url': f'/shop/products/{item["slug"]}/'
-        }
-        for item in product_results
-    ]
+            'title': product.title,
+            'description': product.description,
+            'slug': product.slug,
+            'price': str(product.price),
+            'sku': product.sku,
+            'similarity': round(product.similarity, 3),
+            'stock': product.stock,
+            'is_available': product.is_available,
+            'feature_image': feature_image_url,
+            'url': f'/shop/products/{product.slug}/'
+        })
 
     # Combine and sort by similarity (relevance)
     all_results = blog_list + product_list
