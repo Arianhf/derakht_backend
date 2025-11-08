@@ -10,9 +10,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Add payment_receipt field to Payment model
+        # Add payment_receipt field to PaymentTransaction model
         migrations.AddField(
-            model_name="payment",
+            model_name="paymenttransaction",
             name="payment_receipt",
             field=models.ImageField(
                 blank=True,

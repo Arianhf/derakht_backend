@@ -23,7 +23,19 @@ from .choices import PaymentStatus, OrderStatus
 class PaymentTransactionInline(admin.TabularInline):
     model = PaymentTransaction
     extra = 0
-    readonly_fields = ["created_at"]
+    readonly_fields = ["created_at", "receipt_preview"]
+    fields = ["amount", "transaction_id", "provider_status", "payment_receipt", "receipt_preview", "created_at"]
+
+    def receipt_preview(self, obj):
+        """Display receipt preview in inline"""
+        if obj.payment_receipt:
+            return format_html(
+                '<a href="{}" target="_blank"><img src="{}" width="100" height="100" style="object-fit: cover;" /></a>',
+                obj.payment_receipt.url,
+                obj.payment_receipt.url
+            )
+        return "-"
+    receipt_preview.short_description = _("Receipt Preview")
 
 
 class InvoiceItemInline(admin.TabularInline):
@@ -202,10 +214,10 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ["id", "order", "amount", "status", "gateway", "receipt_preview", "created_at"]
+    list_display = ["id", "order", "amount", "status", "gateway", "latest_receipt_preview", "created_at"]
     list_filter = ["status", "gateway", "created_at"]
     search_fields = ["order__id", "reference_id", "transaction_id"]
-    readonly_fields = ["created_at", "updated_at", "receipt_image_preview"]
+    readonly_fields = ["created_at", "updated_at"]
     inlines = [PaymentTransactionInline]
     actions = ["verify_manual_payments", "reject_manual_payments"]
 
@@ -216,36 +228,22 @@ class PaymentAdmin(admin.ModelAdmin):
             {"fields": ("gateway", "reference_id", "transaction_id")},
         ),
         (
-            _("Manual Payment"),
-            {"fields": ("payment_receipt", "receipt_image_preview")},
-        ),
-        (
             _("Timestamps"),
             {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
         ),
     )
 
-    def receipt_preview(self, obj):
-        """Display a small preview of the payment receipt in the list view"""
-        if obj.payment_receipt:
+    def latest_receipt_preview(self, obj):
+        """Display preview of the latest transaction receipt in the list view"""
+        latest_transaction = obj.transactions.filter(payment_receipt__isnull=False).first()
+        if latest_transaction and latest_transaction.payment_receipt:
             return format_html(
                 '<a href="{}" target="_blank"><img src="{}" width="50" height="50" style="object-fit: cover;" /></a>',
-                obj.payment_receipt.url,
-                obj.payment_receipt.url
+                latest_transaction.payment_receipt.url,
+                latest_transaction.payment_receipt.url
             )
         return "-"
-    receipt_preview.short_description = _("Receipt")
-
-    def receipt_image_preview(self, obj):
-        """Display a larger preview of the payment receipt in the detail view"""
-        if obj.payment_receipt:
-            return format_html(
-                '<a href="{}" target="_blank"><img src="{}" width="300" style="max-width: 100%;" /></a>',
-                obj.payment_receipt.url,
-                obj.payment_receipt.url
-            )
-        return _("No receipt uploaded")
-    receipt_image_preview.short_description = _("Receipt Preview")
+    latest_receipt_preview.short_description = _("Latest Receipt")
 
     def verify_manual_payments(self, request, queryset):
         """Verify manual payments and update order status"""
