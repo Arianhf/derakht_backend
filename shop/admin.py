@@ -17,6 +17,7 @@ from .models import (
 )
 from .models.invoice import InvoiceItem, Invoice
 from .models.payment import PaymentTransaction, Payment
+from .choices import PaymentStatus, OrderStatus
 
 
 class PaymentTransactionInline(admin.TabularInline):
@@ -201,22 +202,114 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ["id", "order", "amount", "status", "created_at"]
+    list_display = ["id", "order", "amount", "status", "gateway", "receipt_preview", "created_at"]
     list_filter = ["status", "gateway", "created_at"]
-    search_fields = ["order__id", "reference_id"]
-    readonly_fields = ["created_at", "updated_at"]
+    search_fields = ["order__id", "reference_id", "transaction_id"]
+    readonly_fields = ["created_at", "updated_at", "receipt_image_preview"]
     inlines = [PaymentTransactionInline]
+    actions = ["verify_manual_payments", "reject_manual_payments"]
+
     fieldsets = (
         (None, {"fields": ("order", "amount", "status", "currency")}),
         (
             _("Payment Details"),
-            {"fields": ("gateway", "reference_id")},
+            {"fields": ("gateway", "reference_id", "transaction_id")},
+        ),
+        (
+            _("Manual Payment"),
+            {"fields": ("payment_receipt", "receipt_image_preview")},
         ),
         (
             _("Timestamps"),
             {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
         ),
     )
+
+    def receipt_preview(self, obj):
+        """Display a small preview of the payment receipt in the list view"""
+        if obj.payment_receipt:
+            return format_html(
+                '<a href="{}" target="_blank"><img src="{}" width="50" height="50" style="object-fit: cover;" /></a>',
+                obj.payment_receipt.url,
+                obj.payment_receipt.url
+            )
+        return "-"
+    receipt_preview.short_description = _("Receipt")
+
+    def receipt_image_preview(self, obj):
+        """Display a larger preview of the payment receipt in the detail view"""
+        if obj.payment_receipt:
+            return format_html(
+                '<a href="{}" target="_blank"><img src="{}" width="300" style="max-width: 100%;" /></a>',
+                obj.payment_receipt.url,
+                obj.payment_receipt.url
+            )
+        return _("No receipt uploaded")
+    receipt_image_preview.short_description = _("Receipt Preview")
+
+    def verify_manual_payments(self, request, queryset):
+        """Verify manual payments and update order status"""
+        verified_count = 0
+        for payment in queryset:
+            if payment.gateway == "MANUAL" and payment.status == PaymentStatus.PENDING:
+                try:
+                    # Update payment status
+                    payment.status = PaymentStatus.COMPLETED
+                    payment.save()
+
+                    # Update order status
+                    order = payment.order
+                    if order.status == OrderStatus.AWAITING_VERIFICATION:
+                        order.transition_to(OrderStatus.CONFIRMED)
+
+                    verified_count += 1
+                except ValidationError as e:
+                    messages.error(
+                        request,
+                        f"Error verifying payment {payment.id}: {str(e)}"
+                    )
+            else:
+                messages.warning(
+                    request,
+                    f"Payment {payment.id} is not a pending manual payment."
+                )
+
+        if verified_count > 0:
+            messages.success(request, f"Successfully verified {verified_count} payment(s).")
+
+    verify_manual_payments.short_description = _("Verify selected manual payments")
+
+    def reject_manual_payments(self, request, queryset):
+        """Reject manual payments and cancel orders"""
+        rejected_count = 0
+        for payment in queryset:
+            if payment.gateway == "MANUAL" and payment.status == PaymentStatus.PENDING:
+                try:
+                    # Update payment status
+                    payment.status = PaymentStatus.FAILED
+                    payment.save()
+
+                    # Update order status
+                    order = payment.order
+                    if order.status == OrderStatus.AWAITING_VERIFICATION:
+                        order.transition_to(OrderStatus.CANCELLED)
+
+                    rejected_count += 1
+                except ValidationError as e:
+                    messages.error(
+                        request,
+                        f"Error rejecting payment {payment.id}: {str(e)}"
+                    )
+            else:
+                messages.warning(
+                    request,
+                    f"Payment {payment.id} is not a pending manual payment."
+                )
+
+        if rejected_count > 0:
+            messages.success(request, f"Successfully rejected {rejected_count} payment(s).")
+
+    reject_manual_payments.short_description = _("Reject selected manual payments")
 
 
 @admin.register(Product)

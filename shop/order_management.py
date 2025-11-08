@@ -9,7 +9,8 @@ from .choices import OrderStatus
 class OrderStatusTransition:
     ALLOWED_TRANSITIONS = {
         OrderStatus.CART: [OrderStatus.PENDING],
-        OrderStatus.PENDING: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+        OrderStatus.PENDING: [OrderStatus.PROCESSING, OrderStatus.AWAITING_VERIFICATION, OrderStatus.CANCELLED],
+        OrderStatus.AWAITING_VERIFICATION: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
         OrderStatus.PROCESSING: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
         OrderStatus.CONFIRMED: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
         OrderStatus.SHIPPED: [OrderStatus.DELIVERED, OrderStatus.RETURNED],
