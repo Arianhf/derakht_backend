@@ -21,7 +21,7 @@ class Order(BaseModel):
     )
     status = models.CharField(
         _("Status"),
-        max_length=20,
+        max_length=25,
         choices=OrderStatus.choices,
         default=OrderStatus.CART,
     )
@@ -221,10 +221,10 @@ class OrderStatusHistory(BaseModel):
         verbose_name=_("Order"),
     )
     from_status = models.CharField(
-        _("From Status"), max_length=20, choices=OrderStatus.choices
+        _("From Status"), max_length=25, choices=OrderStatus.choices
     )
     to_status = models.CharField(
-        _("To Status"), max_length=20, choices=OrderStatus.choices
+        _("To Status"), max_length=25, choices=OrderStatus.choices
     )
     note = models.TextField(_("Note"), blank=True)
 
