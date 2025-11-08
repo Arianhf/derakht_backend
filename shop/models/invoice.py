@@ -15,7 +15,7 @@ class Invoice(BaseModel):
     )
     status = models.CharField(
         _('Status'),
-        max_length=20,
+        max_length=25,
         choices=OrderStatus.choices
     )
     total_amount = models.DecimalField(
