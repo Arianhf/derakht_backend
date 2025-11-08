@@ -14,6 +14,7 @@ class PaymentStatus(models.TextChoices):
 class OrderStatus(models.TextChoices):
     CART = "CART", _("Cart")  # Initial state when order is just a cart
     PENDING = "PENDING", _("Pending")  # Order placed but payment not initiated
+    AWAITING_VERIFICATION = "AWAITING_VERIFICATION", _("Awaiting Verification")  # Payment receipt uploaded, awaiting admin verification
     PROCESSING = "PROCESSING", _("Processing")  # Payment in progress
     CONFIRMED = "CONFIRMED", _("Confirmed")  # Payment completed, order confirmed
     SHIPPED = "SHIPPED", _("Shipped")
@@ -36,3 +37,4 @@ class Currency(models.TextChoices):
 
 class PaymentMethodProvider(models.TextChoices):
     ZARINPAL = "ZARINPAL", _("Zarinpal")
+    MANUAL = "MANUAL", _("Manual Transfer")

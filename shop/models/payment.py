@@ -67,6 +67,13 @@ class PaymentTransaction(BaseModel):
     )
     raw_request = models.JSONField(_("Raw Request"), blank=True, null=True)
     raw_response = models.JSONField(_("Raw Response"), blank=True, null=True)
+    payment_receipt = models.ImageField(
+        _("Payment Receipt"),
+        upload_to="payment_receipts/%Y/%m/%d/",
+        blank=True,
+        null=True,
+        help_text=_("Upload payment receipt for manual verification"),
+    )
 
     class Meta:
         verbose_name = _("Payment Transaction")
