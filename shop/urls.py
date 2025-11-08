@@ -17,6 +17,7 @@ from .views.payment import (
     PaymentStatusView,
     PaymentMethodsView,
     PaymentVerificationView,
+    PaymentReceiptUploadView,
 )
 
 
@@ -55,4 +56,9 @@ urlpatterns = [
         name="payment_status",
     ),
     path("payments/methods/", PaymentMethodsView.as_view(), name="payment_methods"),
+    path(
+        "payments/upload-receipt/",
+        PaymentReceiptUploadView.as_view(),
+        name="upload_receipt",
+    ),
 ]
