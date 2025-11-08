@@ -8,9 +8,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 
-from ..models import Order, Payment
+from ..models import Order, Payment, PaymentTransaction
 from ..services.payment import PaymentService
+from ..serializers.payment import PaymentReceiptUploadSerializer
+from ..choices import PaymentStatus
 
 
 class PaymentRequestView(APIView):
@@ -280,3 +283,81 @@ class PaymentVerificationView(APIView):
                 {"status": "error", "message": str(e), "order_id": str(order.id)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class PaymentReceiptUploadView(APIView):
+    """
+    API view to upload payment receipt for manual verification
+    """
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        """
+        Upload payment receipt for an order
+
+        Expects:
+        - order_id: UUID of the order
+        - payment_receipt: Image file of the payment receipt
+        """
+        serializer = PaymentReceiptUploadSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                {"error": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        order_id = serializer.validated_data["order_id"]
+        payment_receipt = serializer.validated_data["payment_receipt"]
+
+        # Get the order and verify it belongs to the user
+        order = get_object_or_404(Order, id=order_id)
+        if order.user != request.user:
+            return Response(
+                {"error": "You don't have permission to access this order"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Get or create a payment for this order
+        payment, created = Payment.objects.get_or_create(
+            order=order,
+            defaults={
+                "amount": order.total_amount,
+                "status": PaymentStatus.PENDING,
+                "gateway": "MANUAL",  # Manual payment via receipt upload
+                "currency": order.currency,
+            },
+        )
+
+        # If payment already exists and is completed, return error
+        if not created and payment.status == PaymentStatus.COMPLETED:
+            return Response(
+                {"error": "Payment for this order is already completed"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create a payment transaction with the receipt
+        transaction = PaymentTransaction.objects.create(
+            payment=payment,
+            amount=payment.amount,
+            payment_receipt=payment_receipt,
+            provider_status="PENDING_VERIFICATION",
+        )
+
+        # Update payment status to pending if it's not already
+        if payment.status != PaymentStatus.PENDING:
+            payment.status = PaymentStatus.PENDING
+            payment.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": "Payment receipt uploaded successfully. Your payment will be verified manually.",
+                "payment_id": str(payment.id),
+                "transaction_id": str(transaction.id),
+                "order_id": str(order.id),
+            },
+            status=status.HTTP_201_CREATED,
+        )
