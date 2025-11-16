@@ -121,7 +121,7 @@ class StoryPartImageUploadSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        """Validate that the story exists and get or create the story part"""
+        """Validate that the story exists and get or create the story part with template text"""
         story_id = data.get('story_id')
         part_position = data.get('part_position')
 
@@ -130,12 +130,33 @@ class StoryPartImageUploadSerializer(serializers.Serializer):
         except Story.DoesNotExist:
             raise serializers.ValidationError({"story_id": "Story not found."})
 
-        # Get or create the story part
-        story_part, created = StoryPart.objects.get_or_create(
-            story=story,
-            position=part_position,
-            defaults={'text': ''}  # Empty text by default
-        )
+        # Try to get existing story part
+        try:
+            story_part = StoryPart.objects.get(story=story, position=part_position)
+        except StoryPart.DoesNotExist:
+            # Part doesn't exist - try to create it from template
+            if not story.story_template:
+                raise serializers.ValidationError({
+                    "part_position": f"Story part at position {part_position} not found and story has no template."
+                })
+
+            # Get the corresponding template part
+            try:
+                story_part_template = StoryPartTemplate.objects.get(
+                    template=story.story_template,
+                    position=part_position
+                )
+                # Create the story part with text from template
+                story_part = StoryPart.objects.create(
+                    story=story,
+                    position=part_position,
+                    text=story_part_template.prompt_text,
+                    story_part_template=story_part_template
+                )
+            except StoryPartTemplate.DoesNotExist:
+                raise serializers.ValidationError({
+                    "part_position": f"No template part found at position {part_position}."
+                })
 
         data['story_part'] = story_part
         data['story'] = story
