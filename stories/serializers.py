@@ -37,6 +37,24 @@ class StoryPartSerializer(serializers.ModelSerializer):
             return obj.illustration.url
         return None
 
+    def validate_text(self, value):
+        """Validate text for ILLUSTRATE mode stories"""
+        # Get the story from context or instance
+        story = None
+        if self.instance:
+            story = self.instance.story
+        elif 'story' in self.context:
+            story = self.context['story']
+
+        # For ILLUSTRATE mode, text must not be empty
+        if story and story.activity_type == 'ILLUSTRATE':
+            if not value or not value.strip():
+                raise serializers.ValidationError(
+                    "Text is required for story parts in ILLUSTRATE mode."
+                )
+
+        return value
+
 
 class StoryPartTemplateSerializer(serializers.ModelSerializer):
     illustration = serializers.SerializerMethodField()
@@ -135,9 +153,18 @@ class StoryPartImageUploadSerializer(serializers.Serializer):
             story_part = StoryPart.objects.get(story=story, position=part_position)
             data['story_part'] = story_part
         except StoryPart.DoesNotExist:
-            raise serializers.ValidationError({
-                "part_position": f"Story part at position {part_position} not found."
-            })
+            # Get all available positions to help with debugging
+            available_positions = list(
+                StoryPart.objects.filter(story=story).values_list('position', flat=True).order_by('position')
+            )
+            if available_positions:
+                raise serializers.ValidationError({
+                    "part_position": f"Story part at position {part_position} not found. Available positions: {available_positions}"
+                })
+            else:
+                raise serializers.ValidationError({
+                    "part_position": f"Story part at position {part_position} not found. This story has no parts yet. Please ensure the story was created from a template using the start_story endpoint."
+                })
 
         data['story'] = story
         return data

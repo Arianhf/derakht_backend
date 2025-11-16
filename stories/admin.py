@@ -5,8 +5,31 @@ from django.contrib import admin
 from .models import Story, StoryTemplate, StoryPart, StoryPartTemplate, StoryCollection
 
 
+class StoryPartTemplateInlineForm(forms.ModelForm):
+    class Meta:
+        model = StoryPartTemplate
+        fields = "__all__"
+
+    def clean_prompt_text(self):
+        prompt_text = self.cleaned_data.get("prompt_text")
+        # Get the parent template's activity type if available
+        template = self.cleaned_data.get("template") or (
+            self.instance.template if self.instance and self.instance.pk else None
+        )
+
+        # For ILLUSTRATE mode, prompt text must not be empty
+        if template and template.activity_type == "ILLUSTRATE":
+            if not prompt_text or not prompt_text.strip():
+                raise forms.ValidationError(
+                    "Prompt text is required for ILLUSTRATE mode templates."
+                )
+
+        return prompt_text
+
+
 class StoryPartTemplateInline(admin.TabularInline):
     model = StoryPartTemplate
+    form = StoryPartTemplateInlineForm
     extra = 1
     ordering = ["position"]
     fields = ["position", "prompt_text", "illustration"]
@@ -30,6 +53,27 @@ class StoryTemplateAdminForm(forms.ModelForm):
             self.fields["collections"].initial = StoryCollection.objects.filter(
                 stories=self.instance
             )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        activity_type = cleaned_data.get("activity_type")
+
+        # For ILLUSTRATE mode, ensure all template parts will have prompt text
+        # Note: This validation will run after the template is saved (when inline formsets are saved)
+        # So we add a note to the activity_type help text instead
+        if activity_type == "ILLUSTRATE" and self.instance.pk:
+            # Check existing template parts
+            empty_parts = self.instance.template_parts.filter(
+                prompt_text__isnull=True
+            ) | self.instance.template_parts.filter(prompt_text="")
+            if empty_parts.exists():
+                positions = [str(p.position) for p in empty_parts]
+                raise forms.ValidationError(
+                    f"ILLUSTRATE mode requires all story parts to have text. "
+                    f"Parts at positions {', '.join(positions)} have no prompt text."
+                )
+
+        return cleaned_data
 
     def save(self, commit=True):
         template = super().save(commit=commit)
