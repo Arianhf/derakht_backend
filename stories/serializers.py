@@ -105,3 +105,39 @@ class StoryCollectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = StoryCollection
         fields = ["id", "title", "description", "stories", "created_at", "updated_at"]
+
+
+class StoryPartImageUploadSerializer(serializers.Serializer):
+    """Serializer for uploading images to story parts"""
+    story_id = serializers.UUIDField(required=True)
+    part_position = serializers.IntegerField(required=True, min_value=0)
+    image = serializers.ImageField(required=True)
+
+    def validate_image(self, value):
+        """Validate image file size"""
+        # Limit to 10MB
+        if value.size > 10 * 1024 * 1024:
+            raise serializers.ValidationError("Image file too large. Max size is 10MB.")
+        return value
+
+    def validate(self, data):
+        """Validate that the story and part exist and belong to the user"""
+        story_id = data.get('story_id')
+        part_position = data.get('part_position')
+
+        try:
+            story = Story.objects.get(id=story_id)
+        except Story.DoesNotExist:
+            raise serializers.ValidationError({"story_id": "Story not found."})
+
+        # Check if the story part exists
+        try:
+            story_part = StoryPart.objects.get(story=story, position=part_position)
+            data['story_part'] = story_part
+        except StoryPart.DoesNotExist:
+            raise serializers.ValidationError({
+                "part_position": f"Story part at position {part_position} not found."
+            })
+
+        data['story'] = story
+        return data
