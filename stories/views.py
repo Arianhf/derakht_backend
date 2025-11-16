@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status, permissions
@@ -5,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import (
     Story,
@@ -21,6 +23,7 @@ from .serializers import (
     StoryCollectionSerializer,
     StoryPartTemplateSerializer,
     ImageAssetSerializer,
+    StoryPartImageUploadSerializer,
 )
 
 
@@ -218,3 +221,42 @@ class ImageAssetViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         # Return only the ID in the response
         return Response({"id": serializer.instance.id}, status=status.HTTP_201_CREATED)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class StoryPartImageUploadView(APIView):
+    """API endpoint to upload images to story parts for ILLUSTRATE type stories"""
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        """Upload an image to a story part"""
+        serializer = StoryPartImageUploadSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                {"error": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get validated data
+        story = serializer.validated_data['story']
+        story_part = serializer.validated_data['story_part']
+        image = serializer.validated_data['image']
+
+        # Check authorization - user must own the story
+        if story.author != request.user:
+            return Response(
+                {"error": "You don't have permission to modify this story."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Update the story part with the image
+        story_part.illustration = image
+        story_part.save()
+
+        # Return the updated story part
+        return Response(
+            StoryPartSerializer(story_part).data,
+            status=status.HTTP_200_OK
+        )
