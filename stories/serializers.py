@@ -148,23 +148,22 @@ class StoryPartImageUploadSerializer(serializers.Serializer):
         except Story.DoesNotExist:
             raise serializers.ValidationError({"story_id": "Story not found."})
 
-        # Check if the story part exists
+        # Check if the story part exists, create if it doesn't for ILLUSTRATE type
         try:
             story_part = StoryPart.objects.get(story=story, position=part_position)
-            data['story_part'] = story_part
         except StoryPart.DoesNotExist:
-            # Get all available positions to help with debugging
-            available_positions = list(
-                StoryPart.objects.filter(story=story).values_list('position', flat=True).order_by('position')
-            )
-            if available_positions:
-                raise serializers.ValidationError({
-                    "part_position": f"Story part at position {part_position} not found. Available positions: {available_positions}"
-                })
+            if story.activity_type == 'ILLUSTRATE':
+                # Auto-create the story part for ILLUSTRATE type stories
+                story_part = StoryPart.objects.create(
+                    story=story,
+                    position=part_position,
+                    text='',  # Empty text initially, admin will add it
+                )
             else:
                 raise serializers.ValidationError({
-                    "part_position": f"Story part at position {part_position} not found. This story has no parts yet. Please ensure the story was created from a template using the start_story endpoint."
+                    "part_position": f"Story part at position {part_position} not found."
                 })
 
+        data['story_part'] = story_part
         data['story'] = story
         return data
