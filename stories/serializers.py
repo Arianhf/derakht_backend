@@ -121,7 +121,7 @@ class StoryPartImageUploadSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        """Validate that the story and part exist and belong to the user"""
+        """Validate that the story exists and get or create the story part"""
         story_id = data.get('story_id')
         part_position = data.get('part_position')
 
@@ -130,14 +130,13 @@ class StoryPartImageUploadSerializer(serializers.Serializer):
         except Story.DoesNotExist:
             raise serializers.ValidationError({"story_id": "Story not found."})
 
-        # Check if the story part exists
-        try:
-            story_part = StoryPart.objects.get(story=story, position=part_position)
-            data['story_part'] = story_part
-        except StoryPart.DoesNotExist:
-            raise serializers.ValidationError({
-                "part_position": f"Story part at position {part_position} not found."
-            })
+        # Get or create the story part
+        story_part, created = StoryPart.objects.get_or_create(
+            story=story,
+            position=part_position,
+            defaults={'text': ''}  # Empty text by default
+        )
 
+        data['story_part'] = story_part
         data['story'] = story
         return data
