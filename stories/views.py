@@ -173,6 +173,70 @@ class StoryViewSet(viewsets.ModelViewSet):
 
         return Response(StorySerializer(story).data)
 
+    @action(detail=True, methods=["post"], url_path="finalize")
+    @method_decorator(csrf_exempt)
+    def finalize(self, request, pk=None):
+        """
+        Finalize a story by validating completion and updating the title.
+        Validation rules differ based on activity_type:
+        - ILLUSTRATE: All parts must have illustrations
+        - WRITE_FOR_DRAWING: All parts must have text
+        """
+        story = self.get_object()
+
+        # Get all story parts
+        parts = story.parts.all()
+
+        if not parts.exists():
+            return Response(
+                {"error": "Cannot finalize a story with no parts."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate based on activity type
+        if story.activity_type == "ILLUSTRATE":
+            # Check that all parts have illustrations
+            parts_without_illustration = parts.filter(illustration__isnull=True)
+            if parts_without_illustration.exists():
+                missing_positions = list(
+                    parts_without_illustration.values_list("position", flat=True)
+                )
+                return Response(
+                    {
+                        "error": f"All parts must have illustrations. Missing at positions: {missing_positions}"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        elif story.activity_type == "WRITE_FOR_DRAWING":
+            # Check that all parts have text
+            parts_without_text = parts.filter(text__isnull=True) | parts.filter(
+                text=""
+            )
+            if parts_without_text.exists():
+                missing_positions = list(
+                    parts_without_text.values_list("position", flat=True)
+                )
+                return Response(
+                    {
+                        "error": f"All parts must have text. Missing at positions: {missing_positions}"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Update title if provided
+        title = request.data.get("title")
+        if title:
+            story.title = title
+            story.save()
+        else:
+            return Response(
+                {"error": "Title is required to finalize the story."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(StorySerializer(story).data, status=status.HTTP_200_OK)
+
 
 class StoryCollectionViewSet(viewsets.ModelViewSet):
     queryset = StoryCollection.objects.all()
