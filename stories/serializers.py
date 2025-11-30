@@ -75,7 +75,7 @@ class StoryTemplateSerializer(serializers.ModelSerializer):
 
 class StorySerializer(serializers.ModelSerializer):
     parts = StoryPartSerializer(many=True, read_only=True)
-    author = SmallUserSerializer(read_only=True)
+    author = serializers.PrimaryKeyRelatedField(read_only=True)
     cover_image = serializers.SerializerMethodField()
 
     class Meta:
