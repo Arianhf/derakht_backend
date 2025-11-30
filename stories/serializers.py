@@ -8,7 +8,6 @@ from .models import (
     StoryCollection,
     ImageAsset,
 )
-from users.serializers import SmallUserSerializer
 
 
 class ImageAssetSerializer(serializers.ModelSerializer):
