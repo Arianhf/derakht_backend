@@ -23,6 +23,11 @@ class ActivityType(models.TextChoices):
     COMPLETE_STORY = "COMPLETE_STORY", "Complete Story"
 
 
+class StoryStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Draft"
+    COMPLETED = "COMPLETED", "Completed"
+
+
 # stories/models.py
 
 
@@ -47,6 +52,11 @@ class Story(models.Model):
         max_length=20,
         choices=ActivityType.choices,
         default=ActivityType.WRITE_FOR_DRAWING,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=StoryStatus.choices,
+        default=StoryStatus.DRAFT,
     )
     story_template = models.ForeignKey(
         StoryTemplate,

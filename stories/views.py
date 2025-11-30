@@ -15,6 +15,7 @@ from .models import (
     StoryPart,
     StoryPartTemplate,
     ImageAsset,
+    StoryStatus,
 )
 from .serializers import (
     StorySerializer,
@@ -169,9 +170,28 @@ class StoryViewSet(viewsets.ModelViewSet):
         title = request.data.get("title")
         if title:
             story.title = title
-            story.save()
+
+        # Mark the story as completed
+        story.status = StoryStatus.COMPLETED
+        story.save()
 
         return Response(StorySerializer(story).data)
+
+    @action(detail=False, methods=["get"], url_path="completed")
+    def completed_stories(self, request):
+        """Get all completed stories from all users"""
+        completed_stories = Story.objects.filter(
+            status=StoryStatus.COMPLETED
+        ).select_related("author", "story_template").prefetch_related("parts")
+
+        # Paginate the results
+        page = self.paginate_queryset(completed_stories)
+        if page is not None:
+            serializer = StorySerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = StorySerializer(completed_stories, many=True)
+        return Response(serializer.data)
 
 
 class StoryCollectionViewSet(viewsets.ModelViewSet):

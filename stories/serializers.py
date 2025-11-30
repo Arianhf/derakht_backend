@@ -85,13 +85,14 @@ class StorySerializer(serializers.ModelSerializer):
             "author",
             "created_date",
             "activity_type",
+            "status",
             "story_template",
             "parts",
             "cover_image",
             "background_color",
             "font_color",
         ]
-        read_only_fields = ["author", "activity_type", "story_template"]
+        read_only_fields = ["author", "activity_type", "story_template", "status"]
 
     def get_cover_image(self, obj):
         if obj.cover_image:
