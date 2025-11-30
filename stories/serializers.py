@@ -37,6 +37,24 @@ class StoryPartSerializer(serializers.ModelSerializer):
             return obj.illustration.url
         return None
 
+    def validate_text(self, value):
+        """Validate text for ILLUSTRATE mode stories"""
+        # Get the story from context or instance
+        story = None
+        if self.instance:
+            story = self.instance.story
+        elif 'story' in self.context:
+            story = self.context['story']
+
+        # For ILLUSTRATE mode, text must not be empty
+        if story and story.activity_type == 'ILLUSTRATE':
+            if not value or not value.strip():
+                raise serializers.ValidationError(
+                    "Text is required for story parts in ILLUSTRATE mode."
+                )
+
+        return value
+
 
 class StoryPartTemplateSerializer(serializers.ModelSerializer):
     illustration = serializers.SerializerMethodField()
@@ -131,14 +149,22 @@ class StoryPartImageUploadSerializer(serializers.Serializer):
         except Story.DoesNotExist:
             raise serializers.ValidationError({"story_id": "Story not found."})
 
-        # Check if the story part exists
+        # Check if the story part exists, create if it doesn't for ILLUSTRATE type
         try:
             story_part = StoryPart.objects.get(story=story, position=part_position)
-            data['story_part'] = story_part
         except StoryPart.DoesNotExist:
-            raise serializers.ValidationError({
-                "part_position": f"Story part at position {part_position} not found."
-            })
+            if story.activity_type == 'ILLUSTRATE':
+                # Auto-create the story part for ILLUSTRATE type stories
+                story_part = StoryPart.objects.create(
+                    story=story,
+                    position=part_position,
+                    text='',  # Empty text initially, admin will add it
+                )
+            else:
+                raise serializers.ValidationError({
+                    "part_position": f"Story part at position {part_position} not found."
+                })
 
+        data['story_part'] = story_part
         data['story'] = story
         return data

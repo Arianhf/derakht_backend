@@ -45,6 +45,19 @@ class StoryTemplateViewSet(viewsets.ReadOnlyModelViewSet):
         """Initialize a new story from this template"""
         template = self.get_object()
 
+        # For ILLUSTRATE mode, validate that all template parts have prompt text
+        if template.activity_type == "ILLUSTRATE":
+            template_parts = template.template_parts.all()
+            for part in template_parts:
+                if not part.prompt_text or not part.prompt_text.strip():
+                    return Response(
+                        {
+                            "error": f"Template part at position {part.position} has no prompt text. "
+                            "All parts must have text in ILLUSTRATE mode."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
         # Create a new story without parts
         story = Story.objects.create(
             title=f"Draft: {template.title}",
@@ -150,8 +163,17 @@ class StoryViewSet(viewsets.ModelViewSet):
             story=story, story_part_template=story_part_template
         )
 
-        if request.data.get("text", None):
-            story_part.text = request.data.get("text")
+        # For ILLUSTRATE mode, text is required
+        text = request.data.get("text", None)
+        if story.activity_type == "ILLUSTRATE":
+            if not text or not text.strip():
+                return Response(
+                    {"error": "Text is required for story parts in ILLUSTRATE mode."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if text is not None:
+            story_part.text = text
 
         if request.data.get("illustration", None):
             story_part.illustration = request.data.get("illustration")
@@ -159,6 +181,7 @@ class StoryViewSet(viewsets.ModelViewSet):
         story_part.save()
         serializer = StoryPartSerializer(
             instance=story_part,
+            context={'story': story}
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
