@@ -25,6 +25,7 @@ from .serializers import (
     AddressSerializer,
     UserLoginSerializer,
     UserRegistrationSerializer,
+    ProfileImageSerializer,
 )
 
 
@@ -43,6 +44,43 @@ class UserView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProfileImageView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        """Upload or update profile image"""
+        serializer = ProfileImageSerializer(
+            request.user,
+            data=request.data,
+            partial=True
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    "message": "Profile image uploaded successfully",
+                    "profile_image": serializer.data.get('profile_image')
+                },
+                status=status.HTTP_200_OK
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        """Delete profile image"""
+        user = request.user
+        if user.profile_image:
+            user.profile_image.delete(save=True)
+            return Response(
+                {"message": "Profile image deleted successfully"},
+                status=status.HTTP_200_OK
+            )
+        return Response(
+            {"error": "No profile image to delete"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class AddressViewSet(viewsets.ModelViewSet):
