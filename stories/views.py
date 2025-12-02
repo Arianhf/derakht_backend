@@ -177,9 +177,9 @@ class StoryViewSet(viewsets.ModelViewSet):
 
         return Response(StorySerializer(story).data)
 
-    @action(detail=False, methods=["get"], url_path="completed")
+    @action(detail=False, methods=["get"], url_path="completed", permission_classes=[permissions.AllowAny])
     def completed_stories(self, request):
-        """Get all completed stories from all users"""
+        """Get all completed stories from all users - publicly accessible"""
         completed_stories = Story.objects.filter(
             status=StoryStatus.COMPLETED
         ).select_related("author", "story_template").prefetch_related("parts")
