@@ -139,6 +139,28 @@ class UserSerializer(serializers.ModelSerializer):
         return None
 
 
+class ProfileImageSerializer(serializers.ModelSerializer):
+    """Serializer for uploading profile image"""
+    class Meta:
+        model = User
+        fields = ["profile_image"]
+
+    def validate_profile_image(self, value):
+        """Validate the uploaded image"""
+        if value:
+            # Check file size (limit to 5MB)
+            if value.size > 5 * 1024 * 1024:
+                raise serializers.ValidationError("Image file size cannot exceed 5MB.")
+
+            # Check file type
+            allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+            if value.content_type not in allowed_types:
+                raise serializers.ValidationError(
+                    "Only JPEG, PNG, GIF, and WebP images are allowed."
+                )
+        return value
+
+
 class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(style={"input_type": "password"}, write_only=True)

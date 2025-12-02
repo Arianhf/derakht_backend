@@ -3,7 +3,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import UserView, AddressViewSet, AuthView
+from .views import UserView, AddressViewSet, AuthView, ProfileImageView
 
 from .views import (
     CustomTokenObtainPairView,
@@ -28,6 +28,7 @@ urlpatterns = [
     path("reset-password/", reset_password, name="reset-password"),
     path("", include(router.urls)),
     path("me/", UserView.as_view(), name="user-profile"),
+    path("me/profile-image/", ProfileImageView.as_view(), name="profile-image"),
     path(
         "addresses/<str:pk>/set_default/",
         AddressViewSet.as_view({"post": "set_default"}),
