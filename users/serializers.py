@@ -119,7 +119,7 @@ class AddressSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     default_address = serializers.SerializerMethodField()
-    image_profile = serializers.SerializerMethodField()
+    profile_image = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -130,7 +130,7 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "phone_number",
             "default_address",
-            "image_profile",
+            "profile_image",
         ]
         read_only_fields = ["id", "email"]
 
@@ -140,7 +140,7 @@ class UserSerializer(serializers.ModelSerializer):
             return AddressSerializer(default_address).data
         return None
 
-    def get_image_profile(self, obj):
+    def get_profile_image(self, obj):
         if obj.profile_image:
             request = self.context.get('request')
             if request:
