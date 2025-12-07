@@ -51,6 +51,8 @@ class StoryTemplateViewSet(viewsets.ReadOnlyModelViewSet):
             author=request.user,
             activity_type=template.activity_type,
             story_template=template,
+            orientation=template.orientation,
+            size=template.size,
         )
         for story_part_template in template.template_parts.all():
             StoryPart.objects.create(
