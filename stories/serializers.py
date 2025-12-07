@@ -93,6 +93,8 @@ class StorySerializer(serializers.ModelSerializer):
             "cover_image",
             "background_color",
             "font_color",
+            "orientation",
+            "size",
         ]
         read_only_fields = ["author", "activity_type", "story_template", "status"]
 
