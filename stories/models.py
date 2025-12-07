@@ -50,6 +50,20 @@ class StoryTemplate(models.Model):
     cover_image = models.ImageField(
         upload_to="story_templates/covers/", null=True, blank=True
     )
+    orientation = models.CharField(
+        max_length=10,
+        choices=StoryOrientation.choices,
+        null=True,
+        blank=True,
+        help_text="Story orientation (Landscape or Portrait)",
+    )
+    size = models.CharField(
+        max_length=10,
+        choices=StorySize.choices,
+        null=True,
+        blank=True,
+        help_text="Story size (20x20, 25x25, or 15x23)",
+    )
 
 
 class Story(models.Model):

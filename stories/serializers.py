@@ -66,6 +66,8 @@ class StoryTemplateSerializer(serializers.ModelSerializer):
             "activity_type",
             "template_parts",
             "cover_image",
+            "orientation",
+            "size",
         ]
 
     def get_cover_image(self, obj):
