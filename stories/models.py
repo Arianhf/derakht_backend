@@ -28,6 +28,17 @@ class StoryStatus(models.TextChoices):
     COMPLETED = "COMPLETED", "Completed"
 
 
+class StoryOrientation(models.TextChoices):
+    LANDSCAPE = "LANDSCAPE", "Landscape"
+    PORTRAIT = "PORTRAIT", "Portrait"
+
+
+class StorySize(models.TextChoices):
+    SIZE_20X20 = "20x20", "20x20"
+    SIZE_25X25 = "25x25", "25x25"
+    SIZE_15X23 = "15x23", "15x23"
+
+
 # stories/models.py
 
 
@@ -79,6 +90,20 @@ class Story(models.Model):
         blank=True,
         validators=[validate_hex_color],
         help_text="Hex color code for text (e.g., #000000 or #000)",
+    )
+    orientation = models.CharField(
+        max_length=10,
+        choices=StoryOrientation.choices,
+        null=True,
+        blank=True,
+        help_text="Story orientation (Landscape or Portrait)",
+    )
+    size = models.CharField(
+        max_length=10,
+        choices=StorySize.choices,
+        null=True,
+        blank=True,
+        help_text="Story size (20x20, 25x25, or 15x23)",
     )
 
     class Meta:

@@ -94,8 +94,10 @@ class StoryAdmin(admin.ModelAdmin):
         "has_cover_image",
         "background_color",
         "font_color",
+        "orientation",
+        "size",
     ]
-    list_filter = ["activity_type", "created_date"]
+    list_filter = ["activity_type", "created_date", "orientation", "size"]
     search_fields = ["title", "author"]
     inlines = [StoryPartInline]
     readonly_fields = ["created_date"]
@@ -107,6 +109,8 @@ class StoryAdmin(admin.ModelAdmin):
         "cover_image",
         "background_color",
         "font_color",
+        "orientation",
+        "size",
         "created_date",
     ]
 
