@@ -53,15 +53,15 @@ class StoryTemplateAdminForm(forms.ModelForm):
 class StoryTemplateAdmin(admin.ModelAdmin):
     form = StoryTemplateAdminForm
     inlines = [StoryPartTemplateInline]
-    list_display = ["title", "activity_type", "get_collections", "has_cover_image"]
-    list_filter = ["activity_type"]
+    list_display = ["title", "activity_type", "get_collections", "has_cover_image", "orientation", "size"]
+    list_filter = ["activity_type", "orientation", "size"]
     search_fields = ["title", "description"]
 
     fieldsets = (
         (
             None,
             {
-                "fields": ("title", "description", "activity_type", "cover_image"),
+                "fields": ("title", "description", "activity_type", "cover_image", "orientation", "size"),
             },
         ),
     )
