@@ -119,6 +119,11 @@ class Story(models.Model):
         blank=True,
         help_text="Story size (20x20, 25x25, or 15x23)",
     )
+    canvas_data = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Canvas data for stories with canvas content (alternative to text-based parts)",
+    )
 
     class Meta:
         ordering = ["-created_date"]
