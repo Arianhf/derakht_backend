@@ -134,6 +134,11 @@ class StoryPartTemplate(models.Model):
     illustration = models.ImageField(
         upload_to="template_illustrations/", null=True, blank=True
     )
+    canvas_data = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Canvas data for this story part template",
+    )
 
     class Meta:
         ordering = ["position"]
@@ -153,6 +158,11 @@ class StoryPart(models.Model):
         related_name="stories",
         null=True,
         blank=True,
+    )
+    canvas_data = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Canvas data for this story part (alternative to text)",
     )
 
     class Meta:

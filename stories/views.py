@@ -158,6 +158,9 @@ class StoryViewSet(viewsets.ModelViewSet):
         if request.data.get("illustration", None):
             story_part.illustration = request.data.get("illustration")
 
+        if request.data.get("canvas_data", None) is not None:
+            story_part.canvas_data = request.data.get("canvas_data")
+
         story_part.save()
         serializer = StoryPartSerializer(
             instance=story_part,

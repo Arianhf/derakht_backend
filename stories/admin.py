@@ -138,15 +138,30 @@ class StoryCollectionAdmin(admin.ModelAdmin):
 
 @admin.register(StoryPart)
 class StoryPartAdmin(admin.ModelAdmin):
-    list_display = ["story", "position", "created_date"]
+    list_display = ["story", "position", "created_date", "has_canvas_data"]
     list_filter = ["created_date"]
     search_fields = ["text", "story__title"]
     ordering = ["story", "position"]
+    fields = ["story", "position", "text", "illustration", "story_part_template", "canvas_data", "created_date"]
+    readonly_fields = ["created_date"]
+
+    def has_canvas_data(self, obj):
+        return bool(obj.canvas_data)
+
+    has_canvas_data.boolean = True
+    has_canvas_data.short_description = "Has Canvas"
 
 
 @admin.register(StoryPartTemplate)
 class StoryPartTemplateAdmin(admin.ModelAdmin):
-    list_display = ["template", "position"]
+    list_display = ["template", "position", "has_canvas_data"]
     list_filter = ["template"]
     search_fields = ["prompt_text", "template__title"]
     ordering = ["template", "position"]
+    fields = ["template", "position", "prompt_text", "illustration", "canvas_data"]
+
+    def has_canvas_data(self, obj):
+        return bool(obj.canvas_data)
+
+    has_canvas_data.boolean = True
+    has_canvas_data.short_description = "Has Canvas"

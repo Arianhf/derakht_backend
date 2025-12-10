@@ -31,6 +31,7 @@ class StoryPartSerializer(serializers.ModelSerializer):
             "illustration",
             "created_date",
             "story_part_template",
+            "canvas_data",
         ]
         read_only_fields = ["position", "illustration"]
 
@@ -45,7 +46,7 @@ class StoryPartTemplateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StoryPartTemplate
-        fields = ["id", "position", "prompt_text", "illustration"]
+        fields = ["id", "position", "prompt_text", "illustration", "canvas_data"]
 
     def get_illustration(self, obj):
         if obj.illustration:
