@@ -11,12 +11,15 @@ from rest_framework import generics
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from stories.models import ImageAsset
+from stories.serializers import ImageAssetSerializer
 from users.models import User
 from users.serializers import CustomTokenObtainPairSerializer, SignUpSerializer
 from .models import Address
@@ -230,4 +233,87 @@ def reset_password(request):
     except (jwt.ExpiredSignatureError, jwt.DecodeError, User.DoesNotExist):
         return Response(
             {"error": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+class UserAssetViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing user assets (images)"""
+    serializer_class = ImageAssetSerializer
+    parser_classes = (MultiPartParser, FormParser)
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """Return assets for the user specified in the URL"""
+        user_id = self.kwargs.get('user_id')
+        # Only allow users to access their own assets
+        if str(self.request.user.id) != user_id:
+            return ImageAsset.objects.none()
+        return ImageAsset.objects.filter(uploaded_by=self.request.user).order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        """List user assets with pagination"""
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Get pagination params
+        page = request.query_params.get('page', 1)
+        limit = request.query_params.get('limit', 10)
+
+        # Use DRF's built-in pagination
+        page_obj = self.paginate_queryset(queryset)
+        if page_obj is not None:
+            serializer = self.get_serializer(page_obj, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        """Upload a new asset"""
+        user_id = self.kwargs.get('user_id')
+
+        # Verify user can only upload to their own account
+        if str(request.user.id) != user_id:
+            return Response(
+                {"error": "You can only upload assets to your own account"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(uploaded_by=request.user)
+
+        # Return the created asset with id and file URL
+        return Response(
+            {
+                "id": str(serializer.instance.id),
+                "file": serializer.instance.file.url,
+                "created_at": serializer.instance.created_at
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete an asset"""
+        user_id = self.kwargs.get('user_id')
+
+        # Verify user can only delete their own assets
+        if str(request.user.id) != user_id:
+            return Response(
+                {"error": "You can only delete your own assets"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        instance = self.get_object()
+
+        # Verify the asset belongs to the user
+        if instance.uploaded_by != request.user:
+            return Response(
+                {"error": "You can only delete your own assets"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        self.perform_destroy(instance)
+        return Response(
+            {"message": "Asset deleted successfully"},
+            status=status.HTTP_204_NO_CONTENT
         )

@@ -167,6 +167,23 @@ class StoryViewSet(viewsets.ModelViewSet):
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=["patch"], url_path="title")
+    @method_decorator(csrf_exempt)
+    def update_title(self, request, pk=None):
+        """API endpoint to update story title"""
+        story = self.get_object()
+
+        title = request.data.get("title")
+        if not title:
+            return Response(
+                {"error": "Title is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        story.title = title
+        story.save()
+
+        return Response(StorySerializer(story).data, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=["post"])
     @method_decorator(csrf_exempt)
     def finish(self, request, pk=None):
