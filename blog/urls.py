@@ -20,5 +20,5 @@ router.register_endpoint("categories", BlogCategoryAPIViewSet)
 
 
 urlpatterns = [
-    path("api/v2/related-posts/<str:post_id>/", related_posts, name="related_posts"),
+    path("related-posts/<str:post_id>/", related_posts, name="related_posts"),
 ]
