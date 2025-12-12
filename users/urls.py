@@ -3,7 +3,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import UserView, AddressViewSet, AuthView, ProfileImageView
+from .views import UserView, AddressViewSet, AuthView, ProfileImageView, UserAssetViewSet
 
 from .views import (
     CustomTokenObtainPairView,
@@ -33,6 +33,17 @@ urlpatterns = [
         "addresses/<str:pk>/set_default/",
         AddressViewSet.as_view({"post": "set_default"}),
         name="address-set-default",
+    ),
+    # Asset management endpoints
+    path(
+        "<str:user_id>/assets/",
+        UserAssetViewSet.as_view({"get": "list", "post": "create"}),
+        name="user-assets",
+    ),
+    path(
+        "<str:user_id>/assets/<str:pk>/",
+        UserAssetViewSet.as_view({"delete": "destroy"}),
+        name="user-asset-detail",
     ),
 ]
 
