@@ -1,0 +1,111 @@
+[run]
+# Source code to measure
+source = .
+
+# Omit these files/directories from coverage
+omit =
+    */migrations/*
+    */tests/*
+    */test_*.py
+    *_test.py
+    */admin.py
+    */apps.py
+    manage.py
+    derakht/settings*.py
+    derakht/wsgi.py
+    derakht/asgi.py
+    */venv/*
+    */virtualenv/*
+    */env/*
+    */.venv/*
+    */site-packages/*
+    conftest.py
+    setup.py
+    */staticfiles/*
+    */media/*
+    */node_modules/*
+    */__pycache__/*
+    .pytest_cache/*
+
+# Enable branch coverage
+branch = True
+
+# Concurrency support
+concurrency = multiprocessing
+
+# Measurement context
+dynamic_context = test_function
+
+[report]
+# Precision for coverage percentages
+precision = 2
+
+# Show missing lines in coverage report
+show_missing = True
+
+# Skip covered files in report
+skip_covered = False
+
+# Skip empty files
+skip_empty = True
+
+# Exclude these lines from coverage
+exclude_lines =
+    # Standard pragmas
+    pragma: no cover
+
+    # Don't complain about missing debug-only code
+    def __repr__
+    def __str__
+
+    # Don't complain if tests don't hit defensive assertion code
+    raise AssertionError
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    if settings.DEBUG:
+
+    # Don't complain about abstract methods
+    @abstractmethod
+    @abc.abstractmethod
+
+    # Don't complain about type checking imports
+    if False:
+
+    # Don't complain about pass statements
+    pass
+
+    # Don't complain about ellipsis
+    \.\.\.
+
+# Sort coverage report
+sort = Cover
+
+[html]
+# Directory for HTML coverage report
+directory = htmlcov
+
+# Title for HTML report
+title = Derakht Backend Test Coverage Report
+
+[xml]
+# Output file for XML coverage report (for CI/CD)
+output = coverage.xml
+
+[json]
+# Output file for JSON coverage report
+output = coverage.json
+show_contexts = True
+
+[paths]
+# Path mapping for different environments
+source =
+    .
+    */site-packages/
+
+[coverage:run]
+# Plugins
+plugins =
+    django_coverage_plugin
