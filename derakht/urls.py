@@ -35,12 +35,12 @@ urlpatterns = [
     path("documents/", include(wagtaildocs_urls)),
     path("api/users/", include("users.urls")),
     path("api/stories/", include("stories.urls")),
-    path("api/v2/", router.urls),
-    path("api/v2/", shop_router.urls),
-    path('api/v2/', include('core.urls')),
+    path("api/blog/", router.urls),
+    path("api/blog/", shop_router.urls),
+    path("api/core/", include("core.urls")),
+    path("api/shop/", include("shop.urls", namespace="shop")),
     path("", include("blog.urls")),
     path("sitemap.xml", sitemap),
-    path("api/shop/", include("shop.urls", namespace="shop")),
     path("", include(wagtail_urls)),
 ]
 
