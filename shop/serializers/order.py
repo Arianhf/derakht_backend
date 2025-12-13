@@ -39,9 +39,16 @@ class PaymentInfoSerializer(serializers.ModelSerializer):
         fields = ["method", "transaction_id", "payment_date", "status"]
 
 
+class ShippingMethodInfoSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+
+
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     shipping_info = ShippingInfoSerializer(read_only=True)
+    shipping_method = serializers.SerializerMethodField()
+    items_total = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -49,19 +56,37 @@ class OrderSerializer(serializers.ModelSerializer):
             "id",
             "status",
             "total_amount",
+            "items_total",
+            "shipping_cost",
+            "shipping_method",
             "currency",
             "phone_number",
             "shipping_info",
             "items",
             "created_at",
         ]
-        read_only_fields = ["status", "total_amount"]
+        read_only_fields = ["status", "total_amount", "shipping_cost"]
+
+    def get_shipping_method(self, obj):
+        if obj.shipping_method:
+            from ..choices import ShippingMethod
+
+            # Get the display name from choices
+            for choice_value, choice_name in ShippingMethod.choices:
+                if choice_value == obj.shipping_method:
+                    return {"id": choice_value, "name": choice_name}
+        return None
+
+    def get_items_total(self, obj):
+        return obj.total_amount - obj.shipping_cost
 
 
 class OrderDetailSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     shipping_info = ShippingInfoSerializer(read_only=True)
     payment_info = PaymentInfoSerializer(read_only=True)
+    shipping_method = serializers.SerializerMethodField()
+    items_total = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -69,6 +94,9 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "id",
             "status",
             "total_amount",
+            "items_total",
+            "shipping_cost",
+            "shipping_method",
             "currency",
             "phone_number",
             "items",
@@ -76,6 +104,19 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "shipping_info",
             "payment_info",
         ]
+
+    def get_shipping_method(self, obj):
+        if obj.shipping_method:
+            from ..choices import ShippingMethod
+
+            # Get the display name from choices
+            for choice_value, choice_name in ShippingMethod.choices:
+                if choice_value == obj.shipping_method:
+                    return {"id": choice_value, "name": choice_name}
+        return None
+
+    def get_items_total(self, obj):
+        return obj.total_amount - obj.shipping_cost
 
 
 class OrderStatusHistorySerializer(serializers.ModelSerializer):

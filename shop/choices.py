@@ -38,3 +38,8 @@ class Currency(models.TextChoices):
 class PaymentMethodProvider(models.TextChoices):
     ZARINPAL = "ZARINPAL", _("Zarinpal")
     MANUAL = "MANUAL", _("Manual Transfer")
+
+
+class ShippingMethod(models.TextChoices):
+    STANDARD_POST = "standard_post", _("پست معمولی")
+    EXPRESS = "express", _("پیک موتوری")

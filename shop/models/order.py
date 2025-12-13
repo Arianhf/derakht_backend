@@ -7,7 +7,7 @@ from django.conf import settings
 
 from .base import BaseModel
 from .product import Product
-from ..choices import OrderStatus, Currency
+from ..choices import OrderStatus, Currency, ShippingMethod
 from ..managers import OrderManager, CartManager
 from ..order_management import OrderStatusTransition
 
@@ -32,6 +32,14 @@ class Order(BaseModel):
     phone_number = models.CharField(_("Phone Number"), max_length=15)
     notes = models.TextField(_("Notes"), blank=True, null=True)
     tracking_code = models.CharField(_("Tracking Code"), max_length=100, blank=True)
+    shipping_method = models.CharField(
+        _("Shipping Method"),
+        max_length=25,
+        choices=ShippingMethod.choices,
+        blank=True,
+        null=True,
+    )
+    shipping_cost = models.PositiveIntegerField(_("Shipping Cost"), default=0)
 
     objects = OrderManager()
     cart_objects = CartManager()
