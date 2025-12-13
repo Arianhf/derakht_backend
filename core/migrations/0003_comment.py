@@ -9,13 +9,14 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("shop", "0009_alter_invoice_status_and_more"),
+        ("contenttypes", "0002_remove_content_type_name"),
+        ("core", "0002_enable_pg_trgm"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name="ProductComment",
+            name="Comment",
             fields=[
                 (
                     "id",
@@ -26,9 +27,7 @@ class Migration(migrations.Migration):
                         serialize=False,
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
-                ("is_active", models.BooleanField(default=True)),
+                ("object_id", models.UUIDField(verbose_name="Object ID")),
                 (
                     "user_name",
                     models.CharField(
@@ -46,13 +45,14 @@ class Migration(migrations.Migration):
                     "is_deleted",
                     models.BooleanField(default=False, verbose_name="Is Deleted"),
                 ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
                 (
-                    "product",
+                    "content_type",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="comments",
-                        to="shop.product",
-                        verbose_name="Product",
+                        to="contenttypes.contenttype",
+                        verbose_name="Content Type",
                     ),
                 ),
                 (
@@ -61,25 +61,25 @@ class Migration(migrations.Migration):
                         blank=True,
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
-                        related_name="product_comments",
+                        related_name="comments",
                         to=settings.AUTH_USER_MODEL,
                         verbose_name="User",
                     ),
                 ),
             ],
             options={
-                "verbose_name": "Product Comment",
-                "verbose_name_plural": "Product Comments",
+                "verbose_name": "Comment",
+                "verbose_name_plural": "Comments",
                 "ordering": ["-created_at"],
                 "indexes": [
                     models.Index(
-                        fields=["product", "-created_at"],
-                        name="shop_produc_product_idx",
+                        fields=["content_type", "object_id", "-created_at"],
+                        name="core_commen_content_idx",
                     ),
-                    models.Index(fields=["user"], name="shop_produc_user_id_idx"),
+                    models.Index(fields=["user"], name="core_commen_user_id_idx"),
                     models.Index(
                         fields=["is_approved", "is_deleted"],
-                        name="shop_produc_is_appr_idx",
+                        name="core_commen_is_appr_idx",
                     ),
                 ],
             },

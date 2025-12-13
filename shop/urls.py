@@ -19,10 +19,6 @@ from .views.payment import (
     PaymentVerificationView,
     PaymentReceiptUploadView,
 )
-from .views.comment import (
-    product_comments,
-    delete_product_comment,
-)
 
 
 app_name = "shop"
@@ -64,16 +60,5 @@ urlpatterns = [
         "payments/upload-receipt/",
         PaymentReceiptUploadView.as_view(),
         name="upload_receipt",
-    ),
-    # Product comments endpoints
-    path(
-        "products/<slug:slug>/comments/",
-        product_comments,
-        name="product_comments",
-    ),
-    path(
-        "products/<slug:slug>/comments/<uuid:comment_id>/",
-        delete_product_comment,
-        name="delete_product_comment",
     ),
 ]
