@@ -14,6 +14,11 @@ from ..models.promo import PromoCode
 from ..models.order import Order, OrderItem, ShippingInfo
 from ..serializers.cart import CartDetailsSerializer, CartItemSerializer
 from ..serializers.order import OrderSerializer
+from ..serializers.shipping import (
+    ShippingEstimateRequestSerializer,
+    ShippingEstimateResponseSerializer,
+)
+from ..services.shipping import ShippingCalculator
 
 
 class CartViewSet(viewsets.ViewSet):
@@ -349,17 +354,82 @@ class CartViewSet(viewsets.ViewSet):
         # Return the updated cart
         return self.details(request)
 
+    @action(detail=False, methods=["post"], url_path="shipping-estimate")
+    def shipping_estimate(self, request):
+        """
+        Get shipping methods estimate for given location and cart
+        """
+        serializer = ShippingEstimateRequestSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        province = serializer.validated_data["province"]
+        city = serializer.validated_data["city"]
+        cart_id = serializer.validated_data.get("cart_id")
+
+        # Try to convert cart_id to UUID if provided
+        anonymous_cart_id = None
+        if cart_id:
+            try:
+                anonymous_cart_id = uuid.UUID(str(cart_id))
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": "Invalid cart ID format"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Get the appropriate cart
+        cart, created = self.get_cart(request, anonymous_cart_id)
+
+        # Check if cart has items
+        if not cart.items.exists():
+            return Response(
+                {
+                    "code": "EMPTY_CART",
+                    "message": "سبد خرید خالی است",
+                    "severity": "error",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get cart total
+        cart_total = cart.total_amount
+
+        # Get available shipping methods
+        shipping_methods = ShippingCalculator.get_shipping_methods(
+            province, city, cart_total
+        )
+
+        # Prepare response
+        response_data = {
+            "shipping_methods": shipping_methods,
+            "cart_total": cart_total,
+            "free_shipping_threshold": ShippingCalculator.FREE_SHIPPING_THRESHOLD,
+            "message": f"ارسال رایگان برای سفارش‌های بالای {ShippingCalculator.FREE_SHIPPING_THRESHOLD:,} تومان",
+        }
+
+        response_serializer = ShippingEstimateResponseSerializer(response_data)
+        return Response(response_serializer.data)
+
     @action(detail=False, methods=["post"])
     def checkout(self, request):
         """
         Checkout and create order
         """
         shipping_info = request.data.get("shipping_info")
+        shipping_method_id = request.data.get("shipping_method_id")
         anonymous_cart_id = request.data.get("anonymous_cart_id")
 
         if not shipping_info:
             return Response(
                 {"error": "Shipping info is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not shipping_method_id:
+            return Response(
+                {"error": "Shipping method is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -382,8 +452,31 @@ class CartViewSet(viewsets.ViewSet):
                 {"error": "Your cart is empty"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Calculate total amount
-        total_amount = cart.total_amount
+        # Get province from shipping info for validation
+        province = shipping_info.get("province")
+        if not province:
+            return Response(
+                {"error": "Province is required in shipping info"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate shipping method
+        is_valid, error_message = ShippingCalculator.validate_shipping_method(
+            shipping_method_id, province
+        )
+        if not is_valid:
+            return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Calculate total amount and shipping cost
+        items_total = cart.total_amount
+        try:
+            shipping_cost = ShippingCalculator.calculate_shipping_cost(
+                shipping_method_id, province, items_total
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        total_amount = items_total + shipping_cost
         phone_number = shipping_info["phone_number"]
 
         # Create order
@@ -392,6 +485,8 @@ class CartViewSet(viewsets.ViewSet):
             total_amount=total_amount,
             phone_number=phone_number,
             status=OrderStatus.PENDING,
+            shipping_method=shipping_method_id,
+            shipping_cost=shipping_cost,
         )
 
         # Create shipping info
