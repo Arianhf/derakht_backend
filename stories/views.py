@@ -26,6 +26,7 @@ from .serializers import (
     ImageAssetSerializer,
     StoryPartImageUploadSerializer,
 )
+from .pagination import CustomPageNumberPagination
 
 
 class StoryTemplateViewSet(viewsets.ReadOnlyModelViewSet):
@@ -77,6 +78,7 @@ class StoryTemplateViewSet(viewsets.ReadOnlyModelViewSet):
 
 class StoryViewSet(viewsets.ModelViewSet):
     serializer_class = StorySerializer
+    pagination_class = CustomPageNumberPagination
 
     def get_queryset(self):
         return Story.objects.filter(author=self.request.user)
