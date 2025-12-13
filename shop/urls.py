@@ -19,6 +19,10 @@ from .views.payment import (
     PaymentVerificationView,
     PaymentReceiptUploadView,
 )
+from .views.comment import (
+    product_comments_list_create,
+    product_comment_delete,
+)
 
 
 app_name = "shop"
@@ -35,6 +39,18 @@ wagtail_api_router.register_endpoint("product-info", ProductInfoPageAPIViewSet)
 
 urlpatterns = [
     path("", include(router.urls)),
+    # Product comments endpoints
+    path(
+        "products/<slug:slug>/comments/",
+        product_comments_list_create,
+        name="product_comments",
+    ),
+    path(
+        "products/<slug:slug>/comments/<uuid:comment_id>/",
+        product_comment_delete,
+        name="product_comment_delete",
+    ),
+    # Payment endpoints
     path(
         "payments/request/<uuid:order_id>/",
         PaymentRequestView.as_view(),
