@@ -11,6 +11,7 @@ from .category import Category
 from .order import Order, OrderItem, ShippingInfo, PaymentInfo
 from .promo import PromoCode
 from .payment import Payment, PaymentTransaction
+from .comment import ProductComment
 
 __all__ = [
     "BaseModel",
@@ -27,4 +28,5 @@ __all__ = [
     "Payment",
     "PaymentTransaction",
     "ProductInfoPage",
+    "ProductComment",
 ]

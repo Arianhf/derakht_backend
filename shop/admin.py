@@ -14,6 +14,7 @@ from .models import (
     Category,
     CartItem,
     Cart,
+    ProductComment,
 )
 from .models.invoice import InvoiceItem, Invoice
 from .models.payment import PaymentTransaction, Payment
@@ -378,3 +379,61 @@ class CartAdmin(admin.ModelAdmin):
     def total_amount(self, obj):
         return obj.total_amount
     total_amount.short_description = _("Total Amount")
+
+
+@admin.register(ProductComment)
+class ProductCommentAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "product",
+        "user_name",
+        "text_preview",
+        "is_approved",
+        "is_deleted",
+        "created_at",
+    )
+    list_filter = ("is_approved", "is_deleted", "created_at")
+    search_fields = ("text", "user_name", "product__title", "user__email")
+    readonly_fields = ("created_at", "updated_at")
+    actions = ["approve_comments", "reject_comments", "delete_comments"]
+
+    fieldsets = (
+        (None, {"fields": ("product", "user", "user_name", "text")}),
+        (
+            _("Status"),
+            {"fields": ("is_approved", "is_deleted")},
+        ),
+        (
+            _("Timestamps"),
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+
+    def text_preview(self, obj):
+        """Show a preview of the comment text"""
+        if len(obj.text) > 50:
+            return obj.text[:50] + "..."
+        return obj.text
+
+    text_preview.short_description = _("Comment")
+
+    def approve_comments(self, request, queryset):
+        """Approve selected comments"""
+        updated = queryset.update(is_approved=True)
+        messages.success(request, f"Successfully approved {updated} comment(s).")
+
+    approve_comments.short_description = _("Approve selected comments")
+
+    def reject_comments(self, request, queryset):
+        """Reject selected comments"""
+        updated = queryset.update(is_approved=False)
+        messages.success(request, f"Successfully rejected {updated} comment(s).")
+
+    reject_comments.short_description = _("Reject selected comments")
+
+    def delete_comments(self, request, queryset):
+        """Soft delete selected comments"""
+        updated = queryset.update(is_deleted=True)
+        messages.success(request, f"Successfully deleted {updated} comment(s).")
+
+    delete_comments.short_description = _("Delete selected comments")
