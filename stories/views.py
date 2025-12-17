@@ -83,10 +83,10 @@ class StoryViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         """
-        Allow anonymous access for retrieving individual completed stories.
+        Allow anonymous access for retrieving individual completed stories and completed stories list.
         Require authentication for all other actions.
         """
-        if self.action == 'retrieve':
+        if self.action in ['retrieve', 'completed_stories']:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
