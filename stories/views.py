@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status, permissions
@@ -80,7 +81,32 @@ class StoryViewSet(viewsets.ModelViewSet):
     serializer_class = StorySerializer
     pagination_class = CustomPageNumberPagination
 
+    def get_permissions(self):
+        """
+        Allow anonymous access for retrieving individual completed stories.
+        Require authentication for all other actions.
+        """
+        if self.action == 'retrieve':
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+
     def get_queryset(self):
+        """
+        - For 'retrieve' action: Return user's own stories + all completed stories from others
+        - For other actions: Return only user's own stories
+        """
+        if self.action == 'retrieve':
+            # Allow access to completed stories from anyone, plus user's own stories
+            if self.request.user.is_authenticated:
+                # Authenticated users can see their own stories (all statuses) + completed stories from others
+                return Story.objects.filter(
+                    models.Q(author=self.request.user) | models.Q(status=StoryStatus.COMPLETED)
+                ).distinct()
+            else:
+                # Anonymous users can only see completed stories
+                return Story.objects.filter(status=StoryStatus.COMPLETED)
+
+        # For list, create, update, delete: only user's own stories
         return Story.objects.filter(author=self.request.user)
 
     @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
