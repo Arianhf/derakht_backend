@@ -14,7 +14,7 @@ class AuthenticationEndpointTest(BaseAPITestCase):
 
     def test_user_signup_success(self):
         """Test successful user registration"""
-        url = "/api/v1/users/signup/"
+        url = "/api/users/signup/"
         data = {
             "email": "newuser@example.com",
             "username": "newuser",
@@ -39,7 +39,7 @@ class AuthenticationEndpointTest(BaseAPITestCase):
         # Create existing user
         self.create_user(email="existing@example.com", username="existing")
 
-        url = "/api/v1/users/signup/"
+        url = "/api/users/signup/"
         data = {
             "email": "existing@example.com",
             "username": "newuser",
@@ -54,7 +54,7 @@ class AuthenticationEndpointTest(BaseAPITestCase):
 
     def test_user_signup_missing_required_fields(self):
         """Test signup with missing required fields fails"""
-        url = "/api/v1/users/signup/"
+        url = "/api/users/signup/"
         data = {
             "email": "newuser@example.com",
             # Missing required fields
@@ -70,7 +70,7 @@ class AuthenticationEndpointTest(BaseAPITestCase):
             email="test@example.com", username="testuser", password="testpass123"
         )
 
-        url = "/api/v1/users/token/"
+        url = "/api/users/login/"
         data = {"email": "test@example.com", "password": "testpass123"}
         response = self.client.post(url, data, format="json")
 
@@ -85,7 +85,7 @@ class AuthenticationEndpointTest(BaseAPITestCase):
             email="test@example.com", username="testuser", password="testpass123"
         )
 
-        url = "/api/v1/users/token/"
+        url = "/api/users/login/"
         data = {"email": "test@example.com", "password": "wrongpassword"}
         response = self.client.post(url, data, format="json")
 
@@ -93,7 +93,7 @@ class AuthenticationEndpointTest(BaseAPITestCase):
 
     def test_token_obtain_nonexistent_user(self):
         """Test obtaining token for nonexistent user fails"""
-        url = "/api/v1/users/token/"
+        url = "/api/users/login/"
         data = {"email": "nonexistent@example.com", "password": "testpass123"}
         response = self.client.post(url, data, format="json")
 
@@ -107,13 +107,13 @@ class AuthenticationEndpointTest(BaseAPITestCase):
         )
 
         # Get initial tokens
-        url = "/api/v1/users/token/"
+        url = "/api/users/login/"
         data = {"email": "test@example.com", "password": "testpass123"}
         response = self.client.post(url, data, format="json")
         refresh_token = response.data["refresh"]
 
         # Refresh the token
-        refresh_url = "/api/v1/users/token/refresh/"
+        refresh_url = "/api/users/token/refresh/"
         refresh_data = {"refresh": refresh_token}
         refresh_response = self.client.post(refresh_url, refresh_data, format="json")
 
@@ -122,7 +122,7 @@ class AuthenticationEndpointTest(BaseAPITestCase):
 
     def test_token_refresh_invalid_token(self):
         """Test refreshing with invalid token fails"""
-        refresh_url = "/api/v1/users/token/refresh/"
+        refresh_url = "/api/users/token/refresh/"
         refresh_data = {"refresh": "invalid_token"}
         response = self.client.post(refresh_url, refresh_data, format="json")
 
@@ -132,7 +132,7 @@ class AuthenticationEndpointTest(BaseAPITestCase):
         """Test getting user profile when authenticated"""
         user = self.authenticate()
 
-        url = "/api/v1/users/me/"
+        url = "/api/users/me/"
         response = self.client.get(url)
 
         self.assertSuccess(response)
@@ -141,7 +141,7 @@ class AuthenticationEndpointTest(BaseAPITestCase):
 
     def test_get_user_profile_unauthenticated(self):
         """Test getting user profile when not authenticated fails"""
-        url = "/api/v1/users/me/"
+        url = "/api/users/me/"
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -150,7 +150,7 @@ class AuthenticationEndpointTest(BaseAPITestCase):
         """Test updating user profile"""
         user = self.authenticate()
 
-        url = "/api/v1/users/me/"
+        url = "/api/users/me/"
         data = {"first_name": "Updated", "last_name": "Name"}
         response = self.client.patch(url, data, format="json")
 
@@ -177,7 +177,7 @@ class AuthenticationEndpointTest(BaseAPITestCase):
             is_verified=False,
         )
 
-        url = "/api/v1/users/verify-email/"
+        url = "/api/users/verify-email/"
         data = {"email": "test@example.com", "token": "valid_token_123"}
         response = self.client.post(url, data, format="json")
 
@@ -203,7 +203,7 @@ class AuthenticationEndpointTest(BaseAPITestCase):
             is_verified=False,
         )
 
-        url = "/api/v1/users/verify-email/"
+        url = "/api/users/verify-email/"
         data = {"email": "test@example.com", "token": "invalid_token"}
         response = self.client.post(url, data, format="json")
 
@@ -227,7 +227,7 @@ class AddressEndpointTest(BaseAPITestCase):
         """Test creating address when authenticated"""
         user = self.authenticate()
 
-        url = "/api/v1/users/addresses/"
+        url = "/api/users/addresses/"
         data = {
             "recipient_name": "Test Recipient",
             "address": "Test Street, Building 1",
@@ -243,7 +243,7 @@ class AddressEndpointTest(BaseAPITestCase):
 
     def test_create_address_unauthenticated(self):
         """Test creating address when not authenticated fails"""
-        url = "/api/v1/users/addresses/"
+        url = "/api/users/addresses/"
         data = {
             "recipient_name": "Test Recipient",
             "address": "Test Street",
@@ -266,7 +266,7 @@ class AddressEndpointTest(BaseAPITestCase):
         UserFixtures.create_address(user, recipient_name="Address 1")
         UserFixtures.create_address(user, recipient_name="Address 2")
 
-        url = "/api/v1/users/addresses/"
+        url = "/api/users/addresses/"
         response = self.client.get(url)
 
         self.assertSuccess(response)
@@ -282,7 +282,7 @@ class AddressEndpointTest(BaseAPITestCase):
         address1 = UserFixtures.create_address(user, recipient_name="Address 1")
         address2 = UserFixtures.create_address(user, recipient_name="Address 2")
 
-        url = f"/api/v1/users/addresses/{address2.id}/set_default/"
+        url = f"/api/users/addresses/{address2.id}/set_default/"
         response = self.client.post(url, {}, format="json")
 
         self.assertSuccess(response)

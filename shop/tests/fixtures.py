@@ -1,5 +1,6 @@
 # shop/tests/fixtures.py
 
+import uuid
 from decimal import Decimal
 from django.contrib.auth import get_user_model
 from shop.models import Product, Cart, CartItem, Order, OrderItem, ShippingInfo, Payment
@@ -19,14 +20,15 @@ class ShopFixtures:
         Returns:
             Product instance
         """
+        unique_id = uuid.uuid4().hex[:8]
         defaults = {
             "title": "Test Product",
             "description": "Test product description",
             "price": Decimal("100000"),
             "stock": 10,
-            "sku": "TEST-SKU-001",
+            "sku": f"TEST-SKU-{unique_id}",
             "is_available": True,
-            "slug": "test-product",
+            "slug": f"test-product-{unique_id}",
         }
         defaults.update(kwargs)
         return Product.objects.create(**defaults)

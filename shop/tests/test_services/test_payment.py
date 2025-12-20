@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from core.tests.base import BaseTestCase
 from shop.services.payment import PaymentService
-from shop.tests.fixtures import ShopFixtures, UserFixtures
+from shop.tests.fixtures import ShopFixtures
 from shop.choices import OrderStatus
 
 
