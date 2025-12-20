@@ -318,9 +318,10 @@ class ProductAdmin(admin.ModelAdmin):
         "age_range_admin",
         "stock",
         "is_available",
+        "is_visible",
         "created_at",
     )
-    list_filter = ("is_available", "created_at")
+    list_filter = ("is_available", "is_visible", "created_at")
     search_fields = ("title", "description", "sku")
     prepopulated_fields = {"slug": ("title",)}
     inlines = [
@@ -332,7 +333,7 @@ class ProductAdmin(admin.ModelAdmin):
         (_("Basic Information"), {"fields": ("title", "description", "slug")}),
         (
             _("Pricing and Inventory"),
-            {"fields": ("price", "stock", "sku", "is_available")},
+            {"fields": ("price", "stock", "sku", "is_available", "is_visible")},
         ),
         (_("Age Range"), {"fields": ("min_age", "max_age")}),
         (

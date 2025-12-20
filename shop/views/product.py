@@ -16,7 +16,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     API endpoint for products
     """
 
-    queryset = Product.objects.filter(is_active=True, is_available=True)
+    queryset = Product.objects.filter(is_active=True, is_available=True, is_visible=True)
     serializer_class = ProductSerializer
     lookup_field = "slug"
     permission_classes = [permissions.AllowAny]
@@ -27,7 +27,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     ]
     search_fields = ["title", "description", "sku"]
     ordering_fields = ["price", "created_at", "title"]
-    filterset_fields = ["is_available", "min_age", "max_age"]
+    filterset_fields = ["is_available", "is_visible", "min_age", "max_age"]
 
     def get_queryset(self):
         queryset = super().get_queryset()

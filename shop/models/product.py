@@ -18,6 +18,7 @@ class Product(BaseModel):
     stock = models.PositiveIntegerField(_("Stock"), default=0)
     sku = models.CharField(_("SKU"), max_length=50, unique=True)
     is_available = models.BooleanField(_("Is Available"), default=True)
+    is_visible = models.BooleanField(_("Is Visible"), default=True, help_text=_("Controls whether this product is shown in the store"))
 
     # Age range fields
     min_age = models.PositiveSmallIntegerField(_("Minimum Age"), blank=True, null=True)
