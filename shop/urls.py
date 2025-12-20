@@ -37,8 +37,7 @@ wagtail_api_router = WagtailAPIRouter("shop")
 wagtail_api_router.register_endpoint("product-info", ProductInfoPageAPIViewSet)
 
 
-urlpatterns = [
-    path("", include(router.urls)),
+urlpatterns = router.urls + [
     # Product comments endpoints
     path(
         "products/<slug:slug>/comments/",
