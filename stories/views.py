@@ -309,7 +309,14 @@ class StoryPartViewSet(viewsets.GenericViewSet):
     @action(detail=True, methods=["post"])
     @method_decorator(csrf_exempt)
     def reset(self, request, pk=None):
-        """Reset story part canvas data back to template"""
+        """
+        Reset story part canvas data back to template.
+
+        Parameters:
+        - reset_text (bool): If true, reset text canvas. Default: false
+        - reset_illustration (bool): If true, reset illustration canvas. Default: false
+        - If both are false or not provided, reset both canvases (backward compatible)
+        """
         story_part = self.get_object()
 
         # Check if the story part has an associated template
@@ -321,9 +328,23 @@ class StoryPartViewSet(viewsets.GenericViewSet):
 
         template = story_part.story_part_template
 
-        # Deep copy canvas data from template back to story part
-        story_part.canvas_text_data = copy.deepcopy(template.canvas_text_template) if template.canvas_text_template else None
-        story_part.canvas_illustration_data = copy.deepcopy(template.canvas_illustration_template) if template.canvas_illustration_template else None
+        # Get reset flags from request data
+        reset_text = request.data.get("reset_text", False)
+        reset_illustration = request.data.get("reset_illustration", False)
+
+        # If neither is specified, reset both (backward compatible)
+        if not reset_text and not reset_illustration:
+            reset_text = True
+            reset_illustration = True
+
+        # Reset text canvas if requested
+        if reset_text:
+            story_part.canvas_text_data = copy.deepcopy(template.canvas_text_template) if template.canvas_text_template else None
+
+        # Reset illustration canvas if requested
+        if reset_illustration:
+            story_part.canvas_illustration_data = copy.deepcopy(template.canvas_illustration_template) if template.canvas_illustration_template else None
+
         story_part.save()
 
         serializer = self.get_serializer(story_part)
