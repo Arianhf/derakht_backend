@@ -1,6 +1,8 @@
 # admin.py
 from django import forms
 from django.contrib import admin
+from django.utils.html import format_html
+import json
 
 from .models import Story, StoryTemplate, StoryPart, StoryPartTemplate, StoryCollection
 
@@ -9,7 +11,14 @@ class StoryPartTemplateInline(admin.TabularInline):
     model = StoryPartTemplate
     extra = 1
     ordering = ["position"]
-    fields = ["position", "prompt_text", "illustration"]
+    fields = ["position", "canvas_text_template", "canvas_illustration_template"]
+
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        # Add custom widget for JSON fields with better formatting
+        formset.form.base_fields['canvas_text_template'].widget = forms.Textarea(attrs={'rows': 4, 'cols': 60, 'placeholder': 'Enter JSON for text canvas template'})
+        formset.form.base_fields['canvas_illustration_template'].widget = forms.Textarea(attrs={'rows': 4, 'cols': 60, 'placeholder': 'Enter JSON for illustration canvas template'})
+        return formset
 
 
 class StoryTemplateAdminForm(forms.ModelForm):
@@ -53,18 +62,36 @@ class StoryTemplateAdminForm(forms.ModelForm):
 class StoryTemplateAdmin(admin.ModelAdmin):
     form = StoryTemplateAdminForm
     inlines = [StoryPartTemplateInline]
-    list_display = ["title", "activity_type", "orientation", "size", "get_collections", "has_cover_image"]
+    list_display = ["title", "activity_type", "orientation", "size", "get_part_count", "get_collections", "has_cover_image"]
     list_filter = ["activity_type", "orientation", "size"]
     search_fields = ["title", "description"]
 
     fieldsets = (
         (
-            None,
+            "Basic Information",
             {
-                "fields": ("title", "description", "activity_type", "cover_image", "orientation", "size"),
+                "fields": ("title", "description", "activity_type"),
+            },
+        ),
+        (
+            "Display Settings",
+            {
+                "fields": ("cover_image", "orientation", "size"),
+            },
+        ),
+        (
+            "Collections",
+            {
+                "fields": ("collections",),
+                "description": "Select which collections this template should belong to",
             },
         ),
     )
+
+    def get_part_count(self, obj):
+        return obj.template_parts.count()
+
+    get_part_count.short_description = "# of Parts"
 
     def get_collections(self, obj):
         return ", ".join([c.title for c in StoryCollection.objects.filter(stories=obj)])
@@ -138,30 +165,54 @@ class StoryCollectionAdmin(admin.ModelAdmin):
 
 @admin.register(StoryPart)
 class StoryPartAdmin(admin.ModelAdmin):
-    list_display = ["story", "position", "created_date", "has_canvas_data"]
+    list_display = ["story", "position", "created_date", "has_text_canvas", "has_illustration_canvas"]
     list_filter = ["created_date"]
-    search_fields = ["text", "story__title"]
+    search_fields = ["story__title"]
     ordering = ["story", "position"]
-    fields = ["story", "position", "text", "illustration", "story_part_template", "canvas_data", "created_date"]
+    fields = ["story", "position", "story_part_template", "canvas_text_data", "canvas_illustration_data", "created_date"]
     readonly_fields = ["created_date"]
 
-    def has_canvas_data(self, obj):
-        return bool(obj.canvas_data)
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if db_field.name in ['canvas_text_data', 'canvas_illustration_data']:
+            formfield.widget = forms.Textarea(attrs={'rows': 10, 'cols': 80})
+        return formfield
 
-    has_canvas_data.boolean = True
-    has_canvas_data.short_description = "Has Canvas"
+    def has_text_canvas(self, obj):
+        return bool(obj.canvas_text_data)
+
+    has_text_canvas.boolean = True
+    has_text_canvas.short_description = "Has Text Canvas"
+
+    def has_illustration_canvas(self, obj):
+        return bool(obj.canvas_illustration_data)
+
+    has_illustration_canvas.boolean = True
+    has_illustration_canvas.short_description = "Has Illustration Canvas"
 
 
 @admin.register(StoryPartTemplate)
 class StoryPartTemplateAdmin(admin.ModelAdmin):
-    list_display = ["template", "position", "has_canvas_data"]
+    list_display = ["template", "position", "has_text_canvas_template", "has_illustration_canvas_template"]
     list_filter = ["template"]
-    search_fields = ["prompt_text", "template__title"]
+    search_fields = ["template__title"]
     ordering = ["template", "position"]
-    fields = ["template", "position", "prompt_text", "illustration", "canvas_data"]
+    fields = ["template", "position", "canvas_text_template", "canvas_illustration_template"]
 
-    def has_canvas_data(self, obj):
-        return bool(obj.canvas_data)
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if db_field.name in ['canvas_text_template', 'canvas_illustration_template']:
+            formfield.widget = forms.Textarea(attrs={'rows': 10, 'cols': 80})
+        return formfield
 
-    has_canvas_data.boolean = True
-    has_canvas_data.short_description = "Has Canvas"
+    def has_text_canvas_template(self, obj):
+        return bool(obj.canvas_text_template)
+
+    has_text_canvas_template.boolean = True
+    has_text_canvas_template.short_description = "Has Text Canvas"
+
+    def has_illustration_canvas_template(self, obj):
+        return bool(obj.canvas_illustration_template)
+
+    has_illustration_canvas_template.boolean = True
+    has_illustration_canvas_template.short_description = "Has Illustration Canvas"
