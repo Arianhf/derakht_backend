@@ -27,14 +27,34 @@ from .serializers import (
     StoryPartTemplateSerializer,
     ImageAssetSerializer,
     StoryPartImageUploadSerializer,
+    StoryTemplateWriteSerializer,
+    StoryPartTemplateWriteSerializer,
 )
 from .pagination import CustomPageNumberPagination
+from .permissions import IsStaffUser
 
 
-class StoryTemplateViewSet(viewsets.ReadOnlyModelViewSet):
+class StoryTemplateViewSet(viewsets.ModelViewSet):
     queryset = StoryTemplate.objects.all()
     serializer_class = StoryTemplateSerializer
-    permission_classes = (permissions.AllowAny,)
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_permissions(self):
+        """
+        Allow anyone to read templates (list, retrieve).
+        Require staff for write operations (create, update, partial_update, destroy).
+        """
+        if self.action in ['list', 'retrieve', 'start_story']:
+            return [permissions.AllowAny()]
+        return [IsStaffUser()]
+
+    def get_serializer_class(self):
+        """
+        Use write serializer for create/update operations, read serializer for everything else.
+        """
+        if self.action in ['create', 'update', 'partial_update']:
+            return StoryTemplateWriteSerializer
+        return StoryTemplateSerializer
 
     def get_queryset(self):
         queryset = StoryTemplate.objects.all()
@@ -349,6 +369,21 @@ class StoryPartViewSet(viewsets.GenericViewSet):
 
         serializer = self.get_serializer(story_part)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class StoryPartTemplateViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing story part templates (staff only)"""
+    queryset = StoryPartTemplate.objects.all()
+    serializer_class = StoryPartTemplateWriteSerializer
+    permission_classes = [IsStaffUser]
+
+    def get_queryset(self):
+        """Allow filtering by template"""
+        queryset = StoryPartTemplate.objects.all()
+        template_id = self.request.query_params.get("template", None)
+        if template_id:
+            queryset = queryset.filter(template_id=template_id)
+        return queryset.order_by('template', 'position')
 
 
 @method_decorator(csrf_exempt, name='dispatch')

@@ -7,11 +7,13 @@ from .views import (
     StoryCollectionViewSet,
     ImageAssetViewSet,
     StoryPartViewSet,
+    StoryPartTemplateViewSet,
     StoryPartImageUploadView,
 )
 
 router = DefaultRouter()
 router.register(r'templates', StoryTemplateViewSet)
+router.register(r'template-parts', StoryPartTemplateViewSet, basename='template-part')
 router.register(r'collections', StoryCollectionViewSet)
 router.register(r'images', ImageAssetViewSet, basename='image')
 router.register(r'parts', StoryPartViewSet, basename='part')
