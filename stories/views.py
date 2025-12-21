@@ -1,3 +1,4 @@
+import copy
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.decorators import method_decorator
@@ -56,13 +57,19 @@ class StoryTemplateViewSet(viewsets.ReadOnlyModelViewSet):
             orientation=template.orientation,
             size=template.size,
         )
+
+        # Create story parts with deep copied canvas data from template
         for story_part_template in template.template_parts.all():
+            # Deep copy canvas JSON data from template to user instance
+            canvas_text_data = copy.deepcopy(story_part_template.canvas_text_template) if story_part_template.canvas_text_template else None
+            canvas_illustration_data = copy.deepcopy(story_part_template.canvas_illustration_template) if story_part_template.canvas_illustration_template else None
+
             StoryPart.objects.create(
                 story=story,
                 position=story_part_template.position,
-                illustration=story_part_template.illustration,
                 story_part_template=story_part_template,
-                text=story_part_template.prompt_text,
+                canvas_text_data=canvas_text_data,
+                canvas_illustration_data=canvas_illustration_data,
             )
 
         # Return both story and template details
@@ -154,6 +161,7 @@ class StoryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     @method_decorator(csrf_exempt)
     def add_part(self, request, pk=None):
+        """Update a story part with canvas data"""
         story = self.get_object()
         story_part_template_id = request.data.get("story_part_template_id")
 
@@ -180,19 +188,15 @@ class StoryViewSet(viewsets.ModelViewSet):
             story=story, story_part_template=story_part_template
         )
 
-        if request.data.get("text", None):
-            story_part.text = request.data.get("text")
+        # Update canvas data for both text and illustration
+        if "canvas_text_data" in request.data:
+            story_part.canvas_text_data = request.data.get("canvas_text_data")
 
-        if request.data.get("illustration", None):
-            story_part.illustration = request.data.get("illustration")
-
-        if request.data.get("canvas_data", None) is not None:
-            story_part.canvas_data = request.data.get("canvas_data")
+        if "canvas_illustration_data" in request.data:
+            story_part.canvas_illustration_data = request.data.get("canvas_illustration_data")
 
         story_part.save()
-        serializer = StoryPartSerializer(
-            instance=story_part,
-        )
+        serializer = StoryPartSerializer(instance=story_part)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["patch"], url_path="title")
@@ -291,6 +295,60 @@ class ImageAssetViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         # Return only the ID in the response
         return Response({"id": serializer.instance.id}, status=status.HTTP_201_CREATED)
+
+
+class StoryPartViewSet(viewsets.GenericViewSet):
+    """ViewSet for StoryPart operations"""
+    serializer_class = StoryPartSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Return story parts for stories owned by the current user"""
+        return StoryPart.objects.filter(story__author=self.request.user)
+
+    @action(detail=True, methods=["post"])
+    @method_decorator(csrf_exempt)
+    def reset(self, request, pk=None):
+        """
+        Reset story part canvas data back to template.
+
+        Parameters:
+        - reset_text (bool): If true, reset text canvas. Default: false
+        - reset_illustration (bool): If true, reset illustration canvas. Default: false
+        - If both are false or not provided, reset both canvases (backward compatible)
+        """
+        story_part = self.get_object()
+
+        # Check if the story part has an associated template
+        if not story_part.story_part_template:
+            return Response(
+                {"error": "Story part has no associated template"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        template = story_part.story_part_template
+
+        # Get reset flags from request data
+        reset_text = request.data.get("reset_text", False)
+        reset_illustration = request.data.get("reset_illustration", False)
+
+        # If neither is specified, reset both (backward compatible)
+        if not reset_text and not reset_illustration:
+            reset_text = True
+            reset_illustration = True
+
+        # Reset text canvas if requested
+        if reset_text:
+            story_part.canvas_text_data = copy.deepcopy(template.canvas_text_template) if template.canvas_text_template else None
+
+        # Reset illustration canvas if requested
+        if reset_illustration:
+            story_part.canvas_illustration_data = copy.deepcopy(template.canvas_illustration_template) if template.canvas_illustration_template else None
+
+        story_part.save()
+
+        serializer = self.get_serializer(story_part)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
