@@ -134,3 +134,93 @@ class StoryPartImageUploadSerializer(serializers.Serializer):
 
         data['story'] = story
         return data
+
+
+# Staff-only serializers for creating/updating templates
+
+
+class StoryPartTemplateWriteSerializer(serializers.ModelSerializer):
+    """Serializer for creating and updating story part templates (staff only)"""
+
+    class Meta:
+        model = StoryPartTemplate
+        fields = ["id", "template", "position", "canvas_text_template", "canvas_illustration_template"]
+        read_only_fields = ["id"]
+
+    def validate(self, data):
+        """Ensure position is unique within the template"""
+        template = data.get('template')
+        position = data.get('position')
+
+        if template and position is not None:
+            # For updates, exclude the current instance
+            queryset = StoryPartTemplate.objects.filter(template=template, position=position)
+            if self.instance:
+                queryset = queryset.exclude(pk=self.instance.pk)
+
+            if queryset.exists():
+                raise serializers.ValidationError({
+                    "position": f"A story part template with position {position} already exists for this template."
+                })
+
+        return data
+
+
+class StoryTemplateWriteSerializer(serializers.ModelSerializer):
+    """Serializer for creating and updating story templates with nested parts (staff only)"""
+    template_parts = StoryPartTemplateWriteSerializer(many=True, required=False)
+
+    class Meta:
+        model = StoryTemplate
+        fields = [
+            "id",
+            "title",
+            "description",
+            "activity_type",
+            "cover_image",
+            "orientation",
+            "size",
+            "template_parts",
+        ]
+        read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        """Create template with nested template parts"""
+        template_parts_data = validated_data.pop('template_parts', [])
+        template = StoryTemplate.objects.create(**validated_data)
+
+        # Create template parts
+        for part_data in template_parts_data:
+            StoryPartTemplate.objects.create(template=template, **part_data)
+
+        return template
+
+    def update(self, instance, validated_data):
+        """Update template and optionally its parts"""
+        template_parts_data = validated_data.pop('template_parts', None)
+
+        # Update template fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # If template_parts are provided, update them
+        # Note: This is a simple implementation. For production, you might want
+        # more sophisticated logic to handle adding/removing/updating parts
+        if template_parts_data is not None:
+            # Get existing parts
+            existing_parts = {part.position: part for part in instance.template_parts.all()}
+
+            for part_data in template_parts_data:
+                position = part_data.get('position')
+                if position in existing_parts:
+                    # Update existing part
+                    part = existing_parts[position]
+                    for attr, value in part_data.items():
+                        setattr(part, attr, value)
+                    part.save()
+                else:
+                    # Create new part
+                    StoryPartTemplate.objects.create(template=instance, **part_data)
+
+        return instance
