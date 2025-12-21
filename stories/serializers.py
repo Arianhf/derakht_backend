@@ -144,12 +144,18 @@ class StoryPartTemplateWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StoryPartTemplate
-        fields = ["id", "template", "position", "canvas_text_template", "canvas_illustration_template"]
+        fields = ["id", "position", "canvas_text_template", "canvas_illustration_template"]
         read_only_fields = ["id"]
 
     def validate(self, data):
         """Ensure position is unique within the template"""
-        template = data.get('template')
+        # Get template from instance (for updates) or context (for nested creates)
+        template = None
+        if self.instance:
+            template = self.instance.template
+        elif 'template' in self.context:
+            template = self.context['template']
+
         position = data.get('position')
 
         if template and position is not None:
