@@ -20,38 +20,23 @@ class ImageAssetSerializer(serializers.ModelSerializer):
 
 
 class StoryPartSerializer(serializers.ModelSerializer):
-    illustration = serializers.SerializerMethodField()
-
     class Meta:
         model = StoryPart
         fields = [
             "id",
             "position",
-            "text",
-            "illustration",
             "created_date",
             "story_part_template",
-            "canvas_data",
+            "canvas_text_data",
+            "canvas_illustration_data",
         ]
-        read_only_fields = ["position", "illustration"]
-
-    def get_illustration(self, obj):
-        if obj.illustration:
-            return obj.illustration.url
-        return None
+        read_only_fields = ["position"]
 
 
 class StoryPartTemplateSerializer(serializers.ModelSerializer):
-    illustration = serializers.SerializerMethodField()
-
     class Meta:
         model = StoryPartTemplate
-        fields = ["id", "position", "prompt_text", "illustration", "canvas_data"]
-
-    def get_illustration(self, obj):
-        if obj.illustration:
-            return obj.illustration.url
-        return None
+        fields = ["id", "position", "canvas_text_template", "canvas_illustration_template"]
 
 
 class StoryTemplateSerializer(serializers.ModelSerializer):

@@ -130,14 +130,15 @@ class StoryPartTemplate(models.Model):
         StoryTemplate, related_name="template_parts", on_delete=models.CASCADE
     )
     position = models.IntegerField()
-    prompt_text = models.TextField()
-    illustration = models.ImageField(
-        upload_to="template_illustrations/", null=True, blank=True
-    )
-    canvas_data = models.JSONField(
+    canvas_text_template = models.JSONField(
         null=True,
         blank=True,
-        help_text="Canvas data for this story part template",
+        help_text="Canvas JSON data for the text canvas template",
+    )
+    canvas_illustration_template = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Canvas JSON data for the illustration canvas template",
     )
 
     class Meta:
@@ -149,8 +150,6 @@ class StoryPart(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     story = models.ForeignKey(Story, related_name="parts", on_delete=models.CASCADE)
     position = models.IntegerField()
-    text = models.TextField()
-    illustration = models.ImageField(upload_to="illustrations/", null=True, blank=True)
     created_date = models.DateTimeField(auto_now_add=True)
     story_part_template = models.ForeignKey(
         StoryPartTemplate,
@@ -159,10 +158,15 @@ class StoryPart(models.Model):
         null=True,
         blank=True,
     )
-    canvas_data = models.JSONField(
+    canvas_text_data = models.JSONField(
         null=True,
         blank=True,
-        help_text="Canvas data for this story part (alternative to text)",
+        help_text="Canvas JSON data for the text canvas (user editable)",
+    )
+    canvas_illustration_data = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Canvas JSON data for the illustration canvas (user editable)",
     )
 
     class Meta:
