@@ -131,8 +131,9 @@ class UserSerializer(serializers.ModelSerializer):
             "phone_number",
             "default_address",
             "profile_image",
+            "is_staff",
         ]
-        read_only_fields = ["id", "email"]
+        read_only_fields = ["id", "email", "is_staff"]
 
     def get_default_address(self, obj):
         default_address = obj.addresses.filter(is_default=True).first()
