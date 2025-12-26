@@ -75,6 +75,10 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.RequestLoggingMiddleware",  # Log all requests/responses
+    "core.middleware.UserContextMiddleware",  # Add user context to logs
+    "core.middleware.AnalyticsMiddleware",  # Track user analytics
+    "core.middleware.DatabaseQueryLoggingMiddleware",  # Log database performance
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "stories.middleware.CSRFExemptMiddleware",
@@ -311,6 +315,200 @@ ZARINPAL_MERCHANT_ID = os.environ.get(
 ZARINPAL_ACCESS_TOKEN = os.environ.get("ZARINPAL_ACCESS_TOKEN", "")  # For SDK version
 ZARINPAL_CALLBACK_URL = os.environ.get("ZARINPAL_CALLBACK_URL", "http://localhost:8000")
 ZARINPAL_SANDBOX = os.environ.get("ZARINPAL_SANDBOX", "True").lower() == "true"
+
+# ============================================================================
+# LOGGING CONFIGURATION
+# ============================================================================
+
+# Determine log directory
+LOG_DIR = os.path.join(BASE_DIR, "logs")
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
+# Log level from environment (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "INFO" if not DEBUG else "DEBUG")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{levelname}] {asctime} {name} {module}.{funcName}:{lineno} | {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        "simple": {
+            "format": "[{levelname}] {asctime} {name} | {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        "json": {
+            "()": "core.logging_utils.JSONFormatter",
+            "format": "json",
+        },
+    },
+    "filters": {
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
+        },
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose" if DEBUG else "simple",
+        },
+        "file_general": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOG_DIR, "derakht.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10MB
+            "backupCount": 5,
+            "formatter": "verbose",
+        },
+        "file_error": {
+            "level": "ERROR",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOG_DIR, "errors.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10MB
+            "backupCount": 10,
+            "formatter": "verbose",
+        },
+        "file_security": {
+            "level": "WARNING",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOG_DIR, "security.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10MB
+            "backupCount": 10,
+            "formatter": "verbose",
+        },
+        "file_performance": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOG_DIR, "performance.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10MB
+            "backupCount": 5,
+            "formatter": "verbose",
+        },
+        "file_audit": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOG_DIR, "audit.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10MB
+            "backupCount": 20,
+            "formatter": "verbose",
+        },
+        "file_analytics": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOG_DIR, "analytics.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10MB
+            "backupCount": 10,
+            "formatter": "json" if not DEBUG else "verbose",
+        },
+    },
+    "loggers": {
+        # Root logger
+        "": {
+            "handlers": ["console", "file_general", "file_error"],
+            "level": LOG_LEVEL,
+        },
+        # Django internal loggers
+        "django": {
+            "handlers": ["console", "file_general"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console", "file_error", "file_security"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["file_security"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console"] if DEBUG else [],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+        # App-specific loggers
+        "stories": {
+            "handlers": ["console", "file_general", "file_error"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+        "stories.generation": {
+            "handlers": ["console", "file_general", "file_audit"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "stories.images": {
+            "handlers": ["console", "file_general", "file_error"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "shop": {
+            "handlers": ["console", "file_general", "file_error"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+        "shop.payments": {
+            "handlers": ["console", "file_general", "file_error", "file_audit"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "shop.orders": {
+            "handlers": ["console", "file_general", "file_audit"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "users": {
+            "handlers": ["console", "file_general", "file_error"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+        "users.auth": {
+            "handlers": ["console", "file_general", "file_security", "file_audit"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "blog": {
+            "handlers": ["console", "file_general"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+        "core": {
+            "handlers": ["console", "file_general"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+        # Performance logger
+        "performance": {
+            "handlers": ["file_performance", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Analytics logger
+        "analytics": {
+            "handlers": ["file_analytics"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Audit logger
+        "audit": {
+            "handlers": ["file_audit"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+
 try:
     from .local_settings import *
 except ImportError:

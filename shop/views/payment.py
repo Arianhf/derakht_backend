@@ -1,5 +1,6 @@
 # shop/views/payment.py
 
+import logging
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponseRedirect
 from django.views.decorators.csrf import csrf_exempt
@@ -10,10 +11,22 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 
+from core.logging_utils import (
+    get_logger,
+    log_user_action,
+    log_analytics_event,
+    log_api_error,
+    log_security_event,
+    get_client_ip,
+)
 from ..models import Order, Payment, PaymentTransaction
 from ..services.payment import PaymentService
 from ..serializers.payment import PaymentReceiptUploadSerializer
 from ..choices import PaymentStatus
+
+# Initialize loggers
+logger = get_logger("shop.payments")
+audit_logger = get_logger("audit")
 
 
 class PaymentRequestView(APIView):
@@ -30,8 +43,28 @@ class PaymentRequestView(APIView):
         # Get the order
         order = get_object_or_404(Order, id=order_id, user=request.user)
 
+        logger.info(
+            f"Payment request initiated for order {order.id}",
+            extra={
+                "extra_data": {
+                    "order_id": str(order.id),
+                    "order_amount": float(order.total_amount),
+                    "user_id": request.user.id,
+                    "ip_address": get_client_ip(request),
+                }
+            },
+        )
+
         # Check if order is in pending status
         if order.status != "PENDING":
+            logger.warning(
+                f"Payment request rejected: order {order.id} not in PENDING status",
+                extra={
+                    "order_id": str(order.id),
+                    "order_status": order.status,
+                    "user_id": request.user.id,
+                },
+            )
             return Response(
                 {"error": "Payment can only be requested for pending orders"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -40,30 +73,91 @@ class PaymentRequestView(APIView):
         # Get the gateway name from request data
         gateway_name = request.data.get("gateway")
 
-        # Request payment
-        result = PaymentService.request_payment(order, gateway_name)
+        try:
+            # Request payment
+            result = PaymentService.request_payment(order, gateway_name)
 
-        if result["success"]:
-            # Return payment URL and info
-            return Response(
-                {
-                    "success": True,
-                    "payment_url": result["payment_url"],
-                    "authority": result.get("authority"),
-                    "payment_id": result["payment_id"],
-                    "gateway": result["gateway"],
-                }
+            if result["success"]:
+                logger.info(
+                    f"Payment request successful for order {order.id}",
+                    extra={
+                        "extra_data": {
+                            "order_id": str(order.id),
+                            "payment_id": str(result["payment_id"]),
+                            "gateway": result["gateway"],
+                            "authority": result.get("authority"),
+                            "amount": float(order.total_amount),
+                        }
+                    },
+                )
+
+                log_user_action(
+                    audit_logger,
+                    "payment_requested",
+                    user_id=request.user.id,
+                    user_email=request.user.email,
+                    extra_data={
+                        "order_id": str(order.id),
+                        "payment_id": str(result["payment_id"]),
+                        "gateway": result["gateway"],
+                        "amount": float(order.total_amount),
+                    },
+                )
+
+                log_analytics_event(
+                    "payment_requested",
+                    "shop",
+                    user_id=request.user.id,
+                    properties={
+                        "order_id": str(order.id),
+                        "gateway": result["gateway"],
+                        "amount": float(order.total_amount),
+                    },
+                )
+
+                # Return payment URL and info
+                return Response(
+                    {
+                        "success": True,
+                        "payment_url": result["payment_url"],
+                        "authority": result.get("authority"),
+                        "payment_id": result["payment_id"],
+                        "gateway": result["gateway"],
+                    }
+                )
+            else:
+                logger.error(
+                    f"Payment request failed for order {order.id}: {result.get('error_message')}",
+                    extra={
+                        "extra_data": {
+                            "order_id": str(order.id),
+                            "gateway": result.get("gateway"),
+                            "error_message": result.get("error_message"),
+                            "error_code": result.get("error_code"),
+                        }
+                    },
+                )
+
+                # Return error info
+                return Response(
+                    {
+                        "success": False,
+                        "error": result.get("error_message", "Payment request failed"),
+                        "gateway": result.get("gateway"),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        except Exception as e:
+            log_api_error(
+                logger,
+                e,
+                request.path,
+                request.method,
+                user_id=request.user.id,
+                request_data={"order_id": str(order.id), "gateway": gateway_name},
             )
-        else:
-            # Return error info
-            return Response(
-                {
-                    "success": False,
-                    "error": result.get("error_message", "Payment request failed"),
-                    "gateway": result.get("gateway"),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            raise
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -81,23 +175,86 @@ class PaymentCallbackView(APIView):
         # Get the payment
         payment = get_object_or_404(Payment, id=payment_id)
 
-        # Verify payment
-        result = PaymentService.verify_payment(payment, request.GET.dict(), gateway)
+        logger.info(
+            f"Payment callback received (GET) for payment {payment.id}",
+            extra={
+                "extra_data": {
+                    "payment_id": str(payment.id),
+                    "order_id": str(payment.order.id),
+                    "gateway": gateway,
+                    "callback_params": request.GET.dict(),
+                    "ip_address": get_client_ip(request),
+                }
+            },
+        )
 
-        # Get the frontend URL from settings or use a default
-        from django.conf import settings
+        try:
+            # Verify payment
+            result = PaymentService.verify_payment(payment, request.GET.dict(), gateway)
 
-        frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
+            # Get the frontend URL from settings or use a default
+            from django.conf import settings
 
-        # Create appropriate redirect URL
-        if result["success"]:
-            redirect_url = f"{frontend_url}/shop/checkout?transaction_id={result.get('ref_id', '')}&order_id={payment.order.id}&status=success"
-        else:
-            error_message = result.get("message", "Payment verification failed")
-            redirect_url = f"{frontend_url}/shop/checkout?error={error_message}&order_id={payment.order.id}&status=failed"
+            frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
 
-        # Redirect to frontend
-        return HttpResponseRedirect(redirect_url)
+            # Create appropriate redirect URL
+            if result["success"]:
+                logger.info(
+                    f"Payment verified successfully: {payment.id}",
+                    extra={
+                        "extra_data": {
+                            "payment_id": str(payment.id),
+                            "order_id": str(payment.order.id),
+                            "gateway": gateway,
+                            "ref_id": result.get("ref_id"),
+                            "amount": float(payment.amount),
+                        }
+                    },
+                )
+
+                log_analytics_event(
+                    "payment_completed",
+                    "shop",
+                    user_id=payment.order.user.id,
+                    properties={
+                        "payment_id": str(payment.id),
+                        "order_id": str(payment.order.id),
+                        "gateway": gateway,
+                        "amount": float(payment.amount),
+                    },
+                )
+
+                redirect_url = f"{frontend_url}/shop/checkout?transaction_id={result.get('ref_id', '')}&order_id={payment.order.id}&status=success"
+            else:
+                logger.error(
+                    f"Payment verification failed: {payment.id} - {result.get('message')}",
+                    extra={
+                        "extra_data": {
+                            "payment_id": str(payment.id),
+                            "order_id": str(payment.order.id),
+                            "gateway": gateway,
+                            "error_message": result.get("message"),
+                        }
+                    },
+                )
+
+                error_message = result.get("message", "Payment verification failed")
+                redirect_url = f"{frontend_url}/shop/checkout?error={error_message}&order_id={payment.order.id}&status=failed"
+
+            # Redirect to frontend
+            return HttpResponseRedirect(redirect_url)
+
+        except Exception as e:
+            logger.error(
+                f"Payment callback error for payment {payment.id}: {str(e)}",
+                extra={
+                    "payment_id": str(payment.id),
+                    "order_id": str(payment.order.id),
+                    "gateway": gateway,
+                },
+                exc_info=True,
+            )
+            raise
 
     def post(self, request, gateway, payment_id):
         """

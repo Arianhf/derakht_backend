@@ -1,4 +1,5 @@
 import copy
+import logging
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.decorators import method_decorator
@@ -10,6 +11,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.logging_utils import (
+    get_logger,
+    log_user_action,
+    log_analytics_event,
+    log_api_error,
+    log_operation,
+)
 from .models import (
     Story,
     StoryTemplate,
@@ -32,6 +40,12 @@ from .serializers import (
 )
 from .pagination import CustomPageNumberPagination
 from .permissions import IsStaffUser
+
+# Initialize loggers
+logger = get_logger("stories")
+generation_logger = get_logger("stories.generation")
+images_logger = get_logger("stories.images")
+audit_logger = get_logger("audit")
 
 
 class StoryTemplateViewSet(viewsets.ModelViewSet):
@@ -68,40 +82,101 @@ class StoryTemplateViewSet(viewsets.ModelViewSet):
         """Initialize a new story from this template"""
         template = self.get_object()
 
-        # Create a new story without parts
-        story = Story.objects.create(
-            title=f"Draft: {template.title}",
-            author=request.user,
-            activity_type=template.activity_type,
-            story_template=template,
-            orientation=template.orientation,
-            size=template.size,
-        )
+        try:
+            with log_operation(
+                "story_generation",
+                generation_logger,
+                extra_data={
+                    "template_id": template.id,
+                    "template_title": template.title,
+                    "activity_type": template.activity_type,
+                    "user_id": request.user.id,
+                },
+            ):
+                # Create a new story without parts
+                story = Story.objects.create(
+                    title=f"Draft: {template.title}",
+                    author=request.user,
+                    activity_type=template.activity_type,
+                    story_template=template,
+                    orientation=template.orientation,
+                    size=template.size,
+                )
 
-        # Create story parts with deep copied canvas data from template
-        for story_part_template in template.template_parts.all():
-            # Deep copy canvas JSON data from template to user instance
-            canvas_text_data = copy.deepcopy(story_part_template.canvas_text_template) if story_part_template.canvas_text_template else None
-            canvas_illustration_data = copy.deepcopy(story_part_template.canvas_illustration_template) if story_part_template.canvas_illustration_template else None
+                # Create story parts with deep copied canvas data from template
+                parts_created = 0
+                for story_part_template in template.template_parts.all():
+                    # Deep copy canvas JSON data from template to user instance
+                    canvas_text_data = copy.deepcopy(story_part_template.canvas_text_template) if story_part_template.canvas_text_template else None
+                    canvas_illustration_data = copy.deepcopy(story_part_template.canvas_illustration_template) if story_part_template.canvas_illustration_template else None
 
-            StoryPart.objects.create(
-                story=story,
-                position=story_part_template.position,
-                story_part_template=story_part_template,
-                canvas_text_data=canvas_text_data,
-                canvas_illustration_data=canvas_illustration_data,
+                    StoryPart.objects.create(
+                        story=story,
+                        position=story_part_template.position,
+                        story_part_template=story_part_template,
+                        canvas_text_data=canvas_text_data,
+                        canvas_illustration_data=canvas_illustration_data,
+                    )
+                    parts_created += 1
+
+                generation_logger.info(
+                    f"Story created from template: {story.id}",
+                    extra={
+                        "extra_data": {
+                            "story_id": story.id,
+                            "template_id": template.id,
+                            "parts_created": parts_created,
+                            "activity_type": template.activity_type,
+                        }
+                    },
+                )
+
+                # Log user action for audit
+                log_user_action(
+                    audit_logger,
+                    "story_started",
+                    user_id=request.user.id,
+                    user_email=request.user.email,
+                    extra_data={
+                        "story_id": story.id,
+                        "template_id": template.id,
+                        "activity_type": template.activity_type,
+                    },
+                )
+
+                # Log analytics event
+                log_analytics_event(
+                    "story_started",
+                    "stories",
+                    user_id=request.user.id,
+                    properties={
+                        "template_id": template.id,
+                        "activity_type": template.activity_type,
+                        "parts_count": parts_created,
+                    },
+                )
+
+                # Return both story and template details
+                return Response(
+                    {
+                        "story": StorySerializer(story).data,
+                        "template_parts": StoryPartTemplateSerializer(
+                            template.template_parts.all().order_by("position"), many=True
+                        ).data,
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+
+        except Exception as e:
+            log_api_error(
+                generation_logger,
+                e,
+                request.path,
+                request.method,
+                user_id=request.user.id,
+                request_data={"template_id": template.id},
             )
-
-        # Return both story and template details
-        return Response(
-            {
-                "story": StorySerializer(story).data,
-                "template_parts": StoryPartTemplateSerializer(
-                    template.template_parts.all().order_by("position"), many=True
-                ).data,
-            },
-            status=status.HTTP_201_CREATED,
-        )
+            raise
 
 
 class StoryViewSet(viewsets.ModelViewSet):
@@ -143,14 +218,57 @@ class StoryViewSet(viewsets.ModelViewSet):
         story = self.get_object()
 
         if "cover_image" not in request.FILES:
+            images_logger.warning(
+                f"Cover image upload failed: no image provided for story {story.id}",
+                extra={"story_id": story.id, "user_id": request.user.id},
+            )
             return Response(
                 {"error": "No cover image provided"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        story.cover_image = request.FILES["cover_image"]
-        story.save()
+        try:
+            cover_image = request.FILES["cover_image"]
+            file_size = cover_image.size
+            file_type = cover_image.content_type
 
-        return Response(StorySerializer(story).data, status=status.HTTP_200_OK)
+            images_logger.info(
+                f"Uploading cover image for story {story.id}",
+                extra={
+                    "extra_data": {
+                        "story_id": story.id,
+                        "file_size": file_size,
+                        "file_type": file_type,
+                        "user_id": request.user.id,
+                    }
+                },
+            )
+
+            story.cover_image = cover_image
+            story.save()
+
+            log_user_action(
+                audit_logger,
+                "story_cover_uploaded",
+                user_id=request.user.id,
+                user_email=request.user.email,
+                extra_data={
+                    "story_id": story.id,
+                    "file_size": file_size,
+                },
+            )
+
+            return Response(StorySerializer(story).data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            log_api_error(
+                images_logger,
+                e,
+                request.path,
+                request.method,
+                user_id=request.user.id,
+                request_data={"story_id": story.id},
+            )
+            raise
 
     @action(detail=True, methods=["post"])
     @method_decorator(csrf_exempt)
@@ -191,6 +309,14 @@ class StoryViewSet(viewsets.ModelViewSet):
                 id=story_part_template_id, template=story.story_template
             )
         except StoryPartTemplate.DoesNotExist:
+            logger.warning(
+                f"Invalid story part template ID: {story_part_template_id}",
+                extra={
+                    "story_id": story.id,
+                    "template_id": story_part_template_id,
+                    "user_id": request.user.id,
+                },
+            )
             return Response(
                 {"error": "Invalid story part template ID"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -200,6 +326,14 @@ class StoryViewSet(viewsets.ModelViewSet):
         if not StoryPart.objects.filter(
             story=story, story_part_template=story_part_template
         ).exists():
+            logger.warning(
+                f"Story part doesn't exist for template {story_part_template_id}",
+                extra={
+                    "story_id": story.id,
+                    "template_id": story_part_template_id,
+                    "user_id": request.user.id,
+                },
+            )
             return Response(
                 {"error": "Story part doesn't exist"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -208,14 +342,43 @@ class StoryViewSet(viewsets.ModelViewSet):
             story=story, story_part_template=story_part_template
         )
 
-        # Update canvas data for both text and illustration
+        # Track what's being updated
+        updated_fields = []
         if "canvas_text_data" in request.data:
             story_part.canvas_text_data = request.data.get("canvas_text_data")
+            updated_fields.append("canvas_text_data")
 
         if "canvas_illustration_data" in request.data:
             story_part.canvas_illustration_data = request.data.get("canvas_illustration_data")
+            updated_fields.append("canvas_illustration_data")
 
         story_part.save()
+
+        logger.info(
+            f"Story part updated: {story_part.id}",
+            extra={
+                "extra_data": {
+                    "story_id": story.id,
+                    "story_part_id": story_part.id,
+                    "updated_fields": updated_fields,
+                    "position": story_part.position,
+                    "user_id": request.user.id,
+                }
+            },
+        )
+
+        log_user_action(
+            audit_logger,
+            "story_part_updated",
+            user_id=request.user.id,
+            user_email=request.user.email,
+            extra_data={
+                "story_id": story.id,
+                "story_part_id": story_part.id,
+                "updated_fields": updated_fields,
+            },
+        )
+
         serializer = StoryPartSerializer(instance=story_part)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -242,12 +405,53 @@ class StoryViewSet(viewsets.ModelViewSet):
         story = self.get_object()
 
         title = request.data.get("title")
+        title_updated = False
         if title:
             story.title = title
+            title_updated = True
 
         # Mark the story as completed
+        old_status = story.status
         story.status = StoryStatus.COMPLETED
         story.save()
+
+        logger.info(
+            f"Story completed: {story.id}",
+            extra={
+                "extra_data": {
+                    "story_id": story.id,
+                    "old_status": old_status,
+                    "new_status": story.status,
+                    "title_updated": title_updated,
+                    "parts_count": story.parts.count(),
+                    "user_id": request.user.id,
+                }
+            },
+        )
+
+        log_user_action(
+            audit_logger,
+            "story_completed",
+            user_id=request.user.id,
+            user_email=request.user.email,
+            extra_data={
+                "story_id": story.id,
+                "story_title": story.title,
+                "activity_type": story.activity_type,
+            },
+        )
+
+        log_analytics_event(
+            "story_completed",
+            "stories",
+            user_id=request.user.id,
+            properties={
+                "story_id": story.id,
+                "activity_type": story.activity_type,
+                "parts_count": story.parts.count(),
+                "template_id": story.story_template.id if story.story_template else None,
+            },
+        )
 
         return Response(StorySerializer(story).data)
 
@@ -397,6 +601,13 @@ class StoryPartImageUploadView(APIView):
         serializer = StoryPartImageUploadSerializer(data=request.data)
 
         if not serializer.is_valid():
+            images_logger.warning(
+                "Story part image upload validation failed",
+                extra={
+                    "errors": serializer.errors,
+                    "user_id": request.user.id,
+                },
+            )
             return Response(
                 {"error": serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST
@@ -409,17 +620,80 @@ class StoryPartImageUploadView(APIView):
 
         # Check authorization - user must own the story
         if story.author != request.user:
+            images_logger.warning(
+                f"Unauthorized story part image upload attempt for story {story.id}",
+                extra={
+                    "story_id": story.id,
+                    "story_owner": story.author.id,
+                    "attempted_by": request.user.id,
+                },
+            )
             return Response(
                 {"error": "You don't have permission to modify this story."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Update the story part with the image
-        story_part.illustration = image
-        story_part.save()
+        try:
+            file_size = image.size
+            file_type = image.content_type
 
-        # Return the updated story part
-        return Response(
-            StoryPartSerializer(story_part).data,
-            status=status.HTTP_200_OK
-        )
+            images_logger.info(
+                f"Uploading illustration image for story part {story_part.id}",
+                extra={
+                    "extra_data": {
+                        "story_id": story.id,
+                        "story_part_id": story_part.id,
+                        "file_size": file_size,
+                        "file_type": file_type,
+                        "activity_type": story.activity_type,
+                        "user_id": request.user.id,
+                    }
+                },
+            )
+
+            # Update the story part with the image
+            story_part.illustration = image
+            story_part.save()
+
+            log_user_action(
+                audit_logger,
+                "story_part_illustration_uploaded",
+                user_id=request.user.id,
+                user_email=request.user.email,
+                extra_data={
+                    "story_id": story.id,
+                    "story_part_id": story_part.id,
+                    "file_size": file_size,
+                },
+            )
+
+            log_analytics_event(
+                "illustration_uploaded",
+                "stories",
+                user_id=request.user.id,
+                properties={
+                    "story_id": story.id,
+                    "story_part_id": story_part.id,
+                    "activity_type": story.activity_type,
+                },
+            )
+
+            # Return the updated story part
+            return Response(
+                StoryPartSerializer(story_part).data,
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            log_api_error(
+                images_logger,
+                e,
+                request.path,
+                request.method,
+                user_id=request.user.id,
+                request_data={
+                    "story_id": story.id,
+                    "story_part_id": story_part.id,
+                },
+            )
+            raise
