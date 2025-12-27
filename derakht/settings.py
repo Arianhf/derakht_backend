@@ -344,7 +344,6 @@ LOGGING = {
         },
         "json": {
             "()": "core.logging_utils.JSONFormatter",
-            "format": "json",
         },
     },
     "filters": {
