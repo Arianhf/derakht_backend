@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 
 import jwt
 from django.conf import settings
@@ -18,6 +19,13 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from core.logging_utils import (
+    get_logger,
+    log_user_action,
+    log_analytics_event,
+    log_security_event,
+    get_client_ip,
+)
 from stories.models import ImageAsset
 from stories.serializers import ImageAssetSerializer
 from users.models import User
@@ -30,6 +38,11 @@ from .serializers import (
     UserRegistrationSerializer,
     ProfileImageSerializer,
 )
+
+# Initialize loggers
+logger = get_logger("users")
+auth_logger = get_logger("users.auth")
+audit_logger = get_logger("audit")
 
 
 class UserView(APIView):
@@ -45,6 +58,25 @@ class UserView(APIView):
         serializer = UserSerializer(request.user, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
+
+            logger.info(
+                f"User profile updated: {request.user.id}",
+                extra={
+                    "extra_data": {
+                        "user_id": request.user.id,
+                        "updated_fields": list(request.data.keys()),
+                    }
+                },
+            )
+
+            log_user_action(
+                audit_logger,
+                "profile_updated",
+                user_id=request.user.id,
+                user_email=request.user.email,
+                extra_data={"updated_fields": list(request.data.keys())},
+            )
+
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -116,6 +148,33 @@ class AuthView(APIView):
 
             if user:
                 refresh = RefreshToken.for_user(user)
+
+                auth_logger.info(
+                    f"User login successful: {user.email}",
+                    extra={
+                        "extra_data": {
+                            "user_id": user.id,
+                            "email": user.email,
+                            "ip_address": get_client_ip(request),
+                        }
+                    },
+                )
+
+                log_user_action(
+                    audit_logger,
+                    "user_login",
+                    user_id=user.id,
+                    user_email=user.email,
+                    extra_data={"ip_address": get_client_ip(request)},
+                )
+
+                log_analytics_event(
+                    "user_login",
+                    "users",
+                    user_id=user.id,
+                    properties={"ip_address": get_client_ip(request)},
+                )
+
                 return Response(
                     {
                         "access": str(refresh.access_token),
@@ -123,6 +182,15 @@ class AuthView(APIView):
                         "user": UserSerializer(user).data,
                     }
                 )
+
+            # Log failed login attempt
+            log_security_event(
+                "auth_failure",
+                "medium",
+                f"Failed login attempt for email: {email}",
+                ip_address=get_client_ip(request),
+                extra_data={"email": email},
+            )
 
             return Response(
                 {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
@@ -136,6 +204,33 @@ class AuthView(APIView):
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+
+            auth_logger.info(
+                f"New user registered: {user.email}",
+                extra={
+                    "extra_data": {
+                        "user_id": user.id,
+                        "email": user.email,
+                        "ip_address": get_client_ip(request),
+                    }
+                },
+            )
+
+            log_user_action(
+                audit_logger,
+                "user_registered",
+                user_id=user.id,
+                user_email=user.email,
+                extra_data={"ip_address": get_client_ip(request)},
+            )
+
+            log_analytics_event(
+                "user_registered",
+                "users",
+                user_id=user.id,
+                properties={"ip_address": get_client_ip(request)},
+            )
+
             return Response(
                 {
                     "user": UserSerializer(user).data,
