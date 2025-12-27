@@ -30,6 +30,9 @@ DEBUG = int(os.environ.get("DJANGO_DEBUG", 0))
 
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
+# For REST API: disable automatic slash appending to prevent POST redirect issues
+APPEND_SLASH = False
+
 # Application definition
 
 INSTALLED_APPS = [
