@@ -23,6 +23,9 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 # Copy project
 COPY . /app/
 
+# Create logs directory to prevent StatReloader restart loop
+RUN mkdir -p /app/logs
+
 # Create user for security
 RUN adduser --disabled-password --no-create-home django
 
