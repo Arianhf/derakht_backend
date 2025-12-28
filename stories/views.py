@@ -1,5 +1,6 @@
 import copy
 import logging
+import uuid
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.decorators import method_decorator
@@ -26,6 +27,7 @@ from .models import (
     StoryPartTemplate,
     ImageAsset,
     StoryStatus,
+    TemplateImage,
 )
 from .serializers import (
     StorySerializer,
@@ -177,6 +179,188 @@ class StoryTemplateViewSet(viewsets.ModelViewSet):
                 request_data={"template_id": template.id},
             )
             raise
+
+    def perform_update(self, serializer):
+        """
+        Clean up orphaned template images after template update.
+        Extracts image IDs referenced in canvas JSON and deletes unreferenced images.
+        """
+        instance = serializer.save()
+
+        # Extract all image IDs currently used in template parts
+        used_image_ids = set()
+        for part in instance.template_parts.all():
+            # Extract from canvas_illustration_template
+            if part.canvas_illustration_template:
+                used_image_ids.update(
+                    self._extract_image_ids_from_canvas(part.canvas_illustration_template)
+                )
+            # Extract from canvas_text_template
+            if part.canvas_text_template:
+                used_image_ids.update(
+                    self._extract_image_ids_from_canvas(part.canvas_text_template)
+                )
+
+        # Delete unused template images
+        orphaned_images = instance.images.exclude(id__in=used_image_ids)
+        orphaned_count = orphaned_images.count()
+
+        if orphaned_count > 0:
+            images_logger.info(
+                f"Cleaning up {orphaned_count} orphaned template images",
+                extra={
+                    "extra_data": {
+                        "template_id": str(instance.id),
+                        "orphaned_count": orphaned_count,
+                    }
+                },
+            )
+            orphaned_images.delete()
+
+        return instance
+
+    def _extract_image_ids_from_canvas(self, canvas_json):
+        """
+        Extract TemplateImage IDs from canvas JSON by parsing image URLs.
+
+        Canvas JSON structure:
+        {
+            "canvasJSON": {
+                "objects": [
+                    {
+                        "type": "image",
+                        "src": "http://example.com/.../story_templates/images/2024/12/image.jpg",
+                        "templateImageId": "uuid-here"  // Custom property we'll add
+                    }
+                ]
+            }
+        }
+        """
+        image_ids = set()
+
+        if not canvas_json or 'canvasJSON' not in canvas_json:
+            return image_ids
+
+        canvas_data = canvas_json.get('canvasJSON', {})
+        objects = canvas_data.get('objects', [])
+
+        for obj in objects:
+            if obj.get('type') == 'image':
+                # Try to get templateImageId from object (set by frontend)
+                template_image_id = obj.get('templateImageId')
+                if template_image_id:
+                    try:
+                        # Validate UUID format
+                        uuid.UUID(template_image_id)
+                        image_ids.add(template_image_id)
+                    except (ValueError, AttributeError):
+                        pass
+
+        return image_ids
+
+    @action(detail=True, methods=["post"], permission_classes=[IsStaffUser], parser_classes=[MultiPartParser, FormParser])
+    def upload_template_image(self, request, pk=None):
+        """
+        Upload an image for a template part.
+        Returns the image URL to be used in canvas JSON.
+
+        This endpoint allows staff users to upload images that will be referenced
+        in template canvas JSON via URL instead of base64 encoding, significantly
+        reducing payload size and improving performance.
+        """
+        template = self.get_object()
+        image_file = request.FILES.get('image')
+        part_index = request.data.get('part_index')
+
+        if not image_file:
+            images_logger.warning(
+                f"Template image upload failed: No image provided",
+                extra={
+                    "extra_data": {
+                        "template_id": str(template.id),
+                        "user_id": request.user.id,
+                    }
+                },
+            )
+            return Response(
+                {'error': 'No image provided'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not part_index or not part_index.isdigit():
+            return Response(
+                {'error': 'Valid part_index is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        part_index = int(part_index)
+
+        # Validate image size (10MB limit for high-quality images)
+        max_size = 10 * 1024 * 1024
+        if image_file.size > max_size:
+            images_logger.warning(
+                f"Template image upload failed: Image too large ({image_file.size} bytes)",
+                extra={
+                    "extra_data": {
+                        "template_id": str(template.id),
+                        "part_index": part_index,
+                        "file_size": image_file.size,
+                        "user_id": request.user.id,
+                    }
+                },
+            )
+            return Response(
+                {'error': f'Image too large. Maximum size is {max_size / 1024 / 1024}MB'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Create TemplateImage record
+            template_image = TemplateImage.objects.create(
+                template=template,
+                part_index=part_index,
+                image=image_file
+            )
+
+            images_logger.info(
+                f"Template image uploaded successfully: {template_image.id}",
+                extra={
+                    "extra_data": {
+                        "template_id": str(template.id),
+                        "template_image_id": str(template_image.id),
+                        "part_index": part_index,
+                        "file_size": image_file.size,
+                        "user_id": request.user.id,
+                    }
+                },
+            )
+
+            return Response(
+                {
+                    'id': str(template_image.id),
+                    'url': request.build_absolute_uri(template_image.image.url),
+                    'part_index': part_index,
+                    'created_at': template_image.created_at,
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+        except Exception as e:
+            log_api_error(
+                images_logger,
+                e,
+                request.path,
+                request.method,
+                user_id=request.user.id,
+                request_data={
+                    "template_id": str(template.id),
+                    "part_index": part_index,
+                },
+            )
+            return Response(
+                {'error': 'Failed to upload image'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class StoryViewSet(viewsets.ModelViewSet):
