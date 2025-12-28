@@ -192,3 +192,28 @@ class ImageAsset(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class TemplateImage(models.Model):
+    """Store images used in template canvases (for URL-based image references)"""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    template = models.ForeignKey(
+        StoryTemplate, on_delete=models.CASCADE, related_name="images"
+    )
+    part_index = models.IntegerField(
+        help_text="Which template part this image belongs to"
+    )
+    image = models.ImageField(
+        upload_to="story_templates/images/%Y/%m/", help_text="Image file"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["template", "part_index", "created_at"]
+        indexes = [
+            models.Index(fields=["template", "part_index"]),
+        ]
+
+    def __str__(self):
+        return f"Image for {self.template.title} - Part {self.part_index}"
