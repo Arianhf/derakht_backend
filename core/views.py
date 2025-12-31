@@ -15,6 +15,9 @@ from shop.models.product import Product
 from .models import FeatureFlag, Comment
 from .serializers import FeatureFlagSerializer, CommentSerializer, CreateCommentSerializer
 from .utils import is_feature_enabled
+from .logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 
 @api_view(['GET'])
@@ -105,8 +108,12 @@ def global_search(request):
                 # Get a medium-sized rendition for the search results
                 rendition = blog.header_image.get_rendition('fill-400x300')
                 header_image_url = rendition.url
-            except:
+            except Exception as e:
                 # Fallback to original if rendition fails
+                logger.warning(
+                    f"Failed to generate blog header image rendition: {e}",
+                    extra={"extra_data": {"blog_id": blog.id, "error": str(e)}}
+                )
                 header_image_url = blog.header_image.file.url if blog.header_image.file else None
 
         blog_list.append({
@@ -135,8 +142,12 @@ def global_search(request):
                 # Get a medium-sized rendition for the search results
                 rendition = feature_img.image.get_rendition('fill-400x300')
                 feature_image_url = rendition.url
-            except:
+            except Exception as e:
                 # Fallback to original if rendition fails
+                logger.warning(
+                    f"Failed to generate product feature image rendition: {e}",
+                    extra={"extra_data": {"product_id": str(product.id), "error": str(e)}}
+                )
                 feature_image_url = feature_img.image.file.url if feature_img.image.file else None
 
         product_list.append({
