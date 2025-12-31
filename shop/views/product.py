@@ -3,6 +3,7 @@ from django.urls import path
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from wagtail.api.v2.views import PagesAPIViewSet
 
@@ -152,7 +153,7 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 class ProductInfoPageAPIViewSet(PagesAPIViewSet):
     model = ProductInfoPage
     authentication_classes = []
-    permission_classes = []
+    permission_classes = [AllowAny]  # Public API for product information pages
     listing_default_fields = PagesAPIViewSet.listing_default_fields + [
         "product_code",
         "intro",
