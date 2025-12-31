@@ -18,6 +18,7 @@ from core.logging_utils import (
     log_api_error,
     log_security_event,
     get_client_ip,
+    sanitize_payment_params,
 )
 from ..models import Order, Payment, PaymentTransaction
 from ..services.payment import PaymentService
@@ -182,7 +183,7 @@ class PaymentCallbackView(APIView):
                     "payment_id": str(payment.id),
                     "order_id": str(payment.order.id),
                     "gateway": gateway,
-                    "callback_params": request.GET.dict(),
+                    "callback_params": sanitize_payment_params(request.GET.dict()),
                     "ip_address": get_client_ip(request),
                 }
             },

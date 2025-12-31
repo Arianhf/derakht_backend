@@ -25,6 +25,7 @@ from core.logging_utils import (
     log_analytics_event,
     log_security_event,
     get_client_ip,
+    hash_email,
 )
 from stories.models import ImageAsset
 from stories.serializers import ImageAssetSerializer
@@ -150,11 +151,11 @@ class AuthView(APIView):
                 refresh = RefreshToken.for_user(user)
 
                 auth_logger.info(
-                    f"User login successful: {user.email}",
+                    f"User login successful",
                     extra={
                         "extra_data": {
                             "user_id": user.id,
-                            "email": user.email,
+                            "email_hash": hash_email(user.email),
                             "ip_address": get_client_ip(request),
                         }
                     },
