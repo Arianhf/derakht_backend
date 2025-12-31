@@ -378,6 +378,497 @@ Check for N+1 queries in DEBUG mode - `DatabaseQueryLoggingMiddleware` logs when
 - **Dependency management**: Poetry
 - **WSGI server**: Gunicorn 23.0 (production)
 
+## Advanced Patterns and Conventions
+
+### Django Signals Usage
+
+Signals are used extensively in the shop app for automation (`shop/signals.py`):
+
+**Order Item Changes** (`post_save` on `OrderItem`):
+```python
+@receiver(post_save, sender=OrderItem)
+def update_order_total(sender, instance, created, **kwargs):
+    instance.order.calculate_total()
+    # Logs item creation/update with old/new totals
+```
+
+**Payment Completion** (`post_save` on `Payment`):
+```python
+@receiver(post_save, sender=Payment)
+def handle_payment_status_change(sender, instance, **kwargs):
+    if instance.status == "COMPLETED":
+        # Auto-creates Invoice and InvoiceItems
+        # Logs to payment_logger and audit_logger
+```
+
+**Order Status Tracking** (`pre_save` on `Order`):
+```python
+@receiver(pre_save, sender=Order)
+def track_order_status_change(sender, instance, **kwargs):
+    if old_order.status != instance.status:
+        # Creates OrderStatusHistory record
+        # Logs status change to audit
+```
+
+**Key principle**: Signals handle side effects and cross-cutting concerns. Keep signals focused on single responsibility.
+
+### Custom Managers
+
+**OrderManager** (`shop/managers.py`):
+```python
+class OrderManager(models.Manager):
+    def get_active_cart(self, user):
+        """Get or create user's cart"""
+        cart, created = self.get_or_create(
+            user=user, status=OrderStatus.CART,
+            defaults={'currency': Currency.IRR}
+        )
+        return cart
+
+    def get_user_orders(self, user):
+        """Get completed orders (excludes carts)"""
+        return self.filter(user=user).exclude(
+            status=OrderStatus.CART
+        ).order_by('-created_at')
+```
+
+**CartManager** (`shop/managers.py`):
+```python
+class CartManager(models.Manager):
+    def get_or_create_cart(self, user=None):
+        """Handle both authenticated and anonymous carts"""
+        # Returns (cart, created) tuple
+
+    def get_cart_total_items(self, cart):
+        """Aggregate total items using Sum"""
+        return cart.items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
+```
+
+**Convention**: Use managers for common queries and business logic that relates to querysets, not individual instances.
+
+### Serializer Patterns
+
+**Multiple Serializers Per Model**: Different serializers for different use cases:
+
+```python
+# List view - minimal fields for performance
+class ProductListSerializer(serializers.ModelSerializer):
+    feature_image = serializers.SerializerMethodField()
+    age_range = serializers.CharField(source="age_range", read_only=True)
+
+    class Meta:
+        model = Product
+        fields = ["id", "title", "price", "feature_image", "age_range", "slug"]
+
+# Detail view - comprehensive fields
+class ProductDetailSerializer(serializers.ModelSerializer):
+    images = ProductImageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Product
+        fields = ["id", "title", "description", "price", "images", "meta_title", ...]
+
+# Minimal for nested serialization
+class ProductMinimalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ["id", "title", "price", "feature_image"]
+```
+
+**Read vs Write Serializers**: Separate serializers for different operations:
+
+```python
+class StoryTemplateViewSet(viewsets.ModelViewSet):
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return StoryTemplateWriteSerializer  # Accepts file uploads, different validation
+        return StoryTemplateSerializer  # Read-only, includes nested data
+```
+
+**SerializerMethodField for Computed Values**:
+```python
+class ProductSerializer(serializers.ModelSerializer):
+    feature_image = serializers.SerializerMethodField()
+
+    def get_feature_image(self, obj):
+        if obj.feature_image and obj.feature_image.image:
+            return obj.feature_image.image.get_rendition("original").url
+        return None
+```
+
+**Nested Serializers**: Use for related data:
+```python
+class ProductSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)  # Nested read
+    category_id = serializers.UUIDField(write_only=True)  # Write by ID
+    images = ProductImageSerializer(many=True, read_only=True)
+```
+
+### View Patterns
+
+**ViewSet Types Used**:
+- `viewsets.ModelViewSet` - Full CRUD (stories, templates)
+- `viewsets.ReadOnlyModelViewSet` - List + retrieve only (products, orders)
+- `viewsets.ViewSet` - Custom actions only (cart)
+- `viewsets.GenericViewSet` - Base for custom combinations (StoryPartViewSet)
+- `APIView` - Low-level for payment callbacks
+
+**Custom Actions with @action**:
+```python
+class StoryTemplateViewSet(viewsets.ModelViewSet):
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    def start_story(self, request, pk=None):
+        """Initialize a new story from template"""
+        template = self.get_object()
+        # Custom business logic
+        return Response(serializer.data)
+```
+
+**Dynamic Permissions**:
+```python
+class StoryTemplateViewSet(viewsets.ModelViewSet):
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [IsStaffUser()]  # Write operations require staff
+```
+
+**Parser Classes for File Uploads**:
+```python
+class StoryTemplateViewSet(viewsets.ModelViewSet):
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+```
+
+### Anonymous Cart Implementation
+
+**Model Constraints** (`shop/models/cart.py`):
+```python
+class Cart(BaseModel):
+    user = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
+    anonymous_id = models.UUIDField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(user__isnull=False) | models.Q(anonymous_id__isnull=False),
+                name="cart_must_have_user_or_anonymous_id"
+            )
+        ]
+```
+
+**View Logic** (`shop/views/cart.py`):
+```python
+def get_cart(self, request, anonymous_cart_id=None):
+    # Authenticated users: use user FK
+    if request.user.is_authenticated:
+        cart, created = Cart.objects.get_or_create(
+            user=request.user, defaults={"anonymous_id": None}
+        )
+        return cart, created
+
+    # Anonymous users: check header or generate new UUID
+    if not anonymous_cart_id:
+        header_cart_id = request.META.get("HTTP_X_ANONYMOUS_CART_ID")
+        if header_cart_id:
+            anonymous_cart_id = uuid.UUID(header_cart_id)
+
+    if anonymous_cart_id:
+        cart, created = Cart.objects.get_or_create(
+            anonymous_id=anonymous_cart_id, user=None
+        )
+    else:
+        cart = Cart.objects.create(anonymous_id=uuid.uuid4(), user=None)
+
+    return cart, created
+```
+
+**Frontend Integration**: Frontend sends `X-Anonymous-Cart-ID` header with UUID for cart persistence.
+
+### Error Handling Patterns
+
+**Standardized Error Responses**:
+```python
+# 400 Bad Request
+return Response(
+    {"error": "پیام خطا به فارسی"},
+    status=status.HTTP_400_BAD_REQUEST
+)
+
+# 404 Not Found - use get_object_or_404
+order = get_object_or_404(Order, id=order_id, user=request.user)
+
+# 403 Forbidden
+log_security_event(
+    "unauthorized_payment_access",
+    "medium",
+    f"User {request.user.id} attempted to access payment {payment_id}",
+    ip_address=get_client_ip(request)
+)
+return Response(
+    {"error": "شما مجاز به دسترسی به این پرداخت نیستید"},
+    status=status.HTTP_403_FORBIDDEN
+)
+```
+
+**Error Logging Pattern**:
+```python
+try:
+    # Business logic
+    result = PaymentService.request_payment(order, gateway_name)
+except Exception as e:
+    log_api_error(
+        logger, e, request.path, request.method,
+        user_id=request.user.id,
+        request_data=request.data
+    )
+    return Response(
+        {"error": "خطا در پردازش درخواست"},
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+    )
+```
+
+### Permission Patterns
+
+**Custom Permission Classes** (`stories/permissions.py`):
+```python
+class IsStaffUser(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.is_staff
+```
+
+**Usage in Views**:
+```python
+# Class-level
+class CartViewSet(viewsets.ViewSet):
+    permission_classes = (permissions.AllowAny,)
+
+# Dynamic per-action
+class StoryTemplateViewSet(viewsets.ModelViewSet):
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [IsStaffUser()]
+
+# Action-level override
+@action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+def start_story(self, request, pk=None):
+    pass
+```
+
+### Order Status Lifecycle
+
+**Complete Status Flow** (`shop/choices.py`):
+
+```
+Order Statuses:
+- CART              → Initial state (shopping cart)
+- PENDING           → Order placed, awaiting payment
+- AWAITING_VERIFICATION → Manual payment receipt uploaded, needs admin review
+- PROCESSING        → Payment in progress (gateway callback received)
+- CONFIRMED         → Payment completed, order confirmed
+- SHIPPED           → Order dispatched
+- DELIVERED         → Order completed successfully
+- CANCELLED         → Order cancelled
+- REFUNDED          → Payment refunded
+- RETURNED          → Product returned
+
+Payment Statuses:
+- PENDING           → Payment initiated
+- PROCESSING        → Gateway processing
+- COMPLETED         → Payment successful
+- FAILED            → Payment failed
+- REFUNDED          → Payment refunded
+- CANCELLED         → Payment cancelled
+
+Valid Transitions (enforced by business logic):
+CART → PENDING (checkout)
+PENDING → PROCESSING (payment initiated)
+PENDING → AWAITING_VERIFICATION (manual payment receipt uploaded)
+AWAITING_VERIFICATION → CONFIRMED (admin approves)
+PROCESSING → CONFIRMED (payment verified)
+CONFIRMED → SHIPPED (fulfillment)
+SHIPPED → DELIVERED (completion)
+Any → CANCELLED (cancellation)
+DELIVERED → RETURNED (return)
+```
+
+### Pagination
+
+**Custom Pagination** (`stories/pagination.py`):
+```python
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size = 10  # Default
+    page_size_query_param = 'page_size'  # Client can override: ?page_size=25
+    max_page_size = 100  # Prevent abuse
+```
+
+**Global Default** (`settings.py`):
+```python
+REST_FRAMEWORK = {
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 10,
+}
+```
+
+### Performance Patterns
+
+**Query Optimization**:
+```python
+# Use select_related for ForeignKey/OneToOne (single JOIN)
+cart.items.select_related("product").all()
+
+# Use prefetch_related for reverse ForeignKey/ManyToMany
+Story.objects.prefetch_related("parts").all()
+
+# Combine both
+Order.objects.select_related("user").prefetch_related("items__product").all()
+```
+
+**N+1 Query Detection**: `DatabaseQueryLoggingMiddleware` logs warnings when:
+- Query count > 50
+- Total query time > 500ms
+- Shows slowest queries in DEBUG mode
+
+**Aggregation in Database**:
+```python
+# Good: Single query with aggregation
+cart.items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
+
+# Bad: Fetch all and count in Python
+sum([item.quantity for item in cart.items.all()])
+```
+
+### Code Quality and Formatting
+
+**Black Formatter**: Configured in `pyproject.toml`
+```bash
+# Format all files
+black .
+
+# Check without modifying
+black --check .
+
+# Format specific app
+black shop/ stories/
+```
+
+**Recommendations for Refactor**:
+1. Add `flake8` for linting: `poetry add --dev flake8`
+2. Add `isort` for import sorting: `poetry add --dev isort`
+3. Set up pre-commit hooks:
+   ```bash
+   poetry add --dev pre-commit
+   # Create .pre-commit-config.yaml with black, flake8, isort
+   pre-commit install
+   ```
+4. Add `mypy` for type checking: `poetry add --dev mypy django-stubs`
+
+### Testing Strategy
+
+**Current State**: Test files exist but are empty (`# Create your tests here.`)
+
+**Recommended Testing Structure**:
+
+```python
+# shop/tests/test_models.py
+from django.test import TestCase
+from shop.models import Product, Order
+
+class ProductModelTests(TestCase):
+    def setUp(self):
+        self.product = Product.objects.create(...)
+
+    def test_product_age_range(self):
+        self.assertEqual(self.product.age_range, "5-10")
+
+# shop/tests/test_views.py
+from rest_framework.test import APITestCase
+from django.contrib.auth import get_user_model
+
+class CartViewTests(APITestCase):
+    def test_add_to_cart_authenticated(self):
+        response = self.client.post('/api/shop/cart/add_item/', {...})
+        self.assertEqual(response.status_code, 200)
+
+# shop/tests/test_services.py
+from django.test import TestCase
+from shop.services.payment import PaymentService
+
+class PaymentServiceTests(TestCase):
+    def test_request_payment_creates_payment_record(self):
+        result = PaymentService.request_payment(order)
+        self.assertTrue(result['success'])
+```
+
+**Test Commands**:
+```bash
+# Run all tests
+python manage.py test
+
+# Run specific app
+python manage.py test shop
+
+# Run specific test class
+python manage.py test shop.tests.test_models.ProductModelTests
+
+# Run with coverage
+coverage run --source='.' manage.py test
+coverage report
+coverage html  # Generate HTML report
+```
+
+**Fixtures**: Create fixtures for common test data:
+```bash
+python manage.py dumpdata shop.Product --indent 2 > shop/fixtures/products.json
+```
+
+### API Response Conventions
+
+**Success Response**:
+```json
+{
+  "id": "uuid",
+  "field": "value",
+  "nested": {...}
+}
+```
+
+**List Response (Paginated)**:
+```json
+{
+  "count": 42,
+  "next": "http://api/endpoint/?page=2",
+  "previous": null,
+  "results": [...]
+}
+```
+
+**Error Response**:
+```json
+{
+  "error": "پیام خطا به فارسی",
+  "detail": "Additional error details (optional)"
+}
+```
+
+**Validation Error**:
+```json
+{
+  "field_name": ["خطای اعتبارسنجی"],
+  "another_field": ["خطای دیگر"]
+}
+```
+
+**Status Codes Used**:
+- `200 OK` - Successful GET, PUT, PATCH
+- `201 Created` - Successful POST
+- `204 No Content` - Successful DELETE
+- `400 Bad Request` - Validation errors, invalid data
+- `401 Unauthorized` - Missing/invalid authentication
+- `403 Forbidden` - Authenticated but lacks permission
+- `404 Not Found` - Resource doesn't exist
+- `500 Internal Server Error` - Server-side errors (logged)
+
 ## Key Files Reference
 
 - `derakht/settings.py` - All Django configuration
@@ -388,5 +879,12 @@ Check for N+1 queries in DEBUG mode - `DatabaseQueryLoggingMiddleware` logs when
 - `shop/gateways/factory.py` - Payment gateway factory
 - `shop/gateways/zarinpal_sdk.py` - Zarinpal integration
 - `shop/models/base.py` - BaseModel abstract class
+- `shop/managers.py` - Custom managers (OrderManager, CartManager)
+- `shop/signals.py` - Django signals for order/payment automation
+- `shop/choices.py` - Enums for order/payment statuses
+- `shop/serializers/` - Multiple serializers per model pattern
+- `shop/views/` - ViewSet patterns and custom actions
+- `stories/permissions.py` - Custom permission classes
+- `stories/pagination.py` - Custom pagination configuration
 - `blog/storages.py` - MinIO storage backends
 - `LOGGING.md` - Comprehensive logging documentation
