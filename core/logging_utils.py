@@ -429,3 +429,42 @@ def get_client_ip(request) -> str:
     else:
         ip = request.META.get("REMOTE_ADDR", "unknown")
     return ip
+
+
+def sanitize_payment_params(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Remove sensitive payment data from logs.
+
+    Args:
+        params: Payment parameters dictionary
+
+    Returns:
+        Sanitized dictionary with sensitive fields redacted
+
+    Example:
+        safe_params = sanitize_payment_params(request.GET.dict())
+        logger.info("Payment callback", extra={"extra_data": {"params": safe_params}})
+    """
+    safe_params = params.copy()
+    sensitive_keys = ['card_number', 'cvv', 'password', 'token', 'CardPan', 'cvv2']
+    for key in sensitive_keys:
+        if key in safe_params:
+            safe_params[key] = '***REDACTED***'
+    return safe_params
+
+
+def hash_email(email: str) -> str:
+    """
+    Hash email for privacy-preserving logs.
+
+    Args:
+        email: Email address to hash
+
+    Returns:
+        First 16 characters of SHA256 hash of the email
+
+    Example:
+        logger.info("Password reset", extra={"email_hash": hash_email(email)})
+    """
+    import hashlib
+    return hashlib.sha256(email.encode()).hexdigest()[:16]
