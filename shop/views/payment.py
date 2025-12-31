@@ -8,7 +8,7 @@ from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
 
 from core.logging_utils import (
@@ -166,7 +166,7 @@ class PaymentCallbackView(APIView):
     API view to handle payment gateway callbacks
     """
 
-    permission_classes = []  # Allow unauthenticated access for callbacks
+    permission_classes = [AllowAny]  # Allow unauthenticated callbacks from payment gateway
 
     def get(self, request, gateway, payment_id):
         """

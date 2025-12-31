@@ -17,7 +17,7 @@ from blog.models import BlogPost, BlogCategory
 class BlogPostAPIViewSet(PagesAPIViewSet):
     model = BlogPost
     authentication_classes = []
-    permission_classes = []
+    permission_classes = [AllowAny]  # Public API for blog posts
     listing_default_fields = PagesAPIViewSet.listing_default_fields + [
         "header_image",
         "reading_time",
@@ -204,7 +204,7 @@ class BlogPostAPIViewSet(PagesAPIViewSet):
 class BlogIndexPageAPIViewSet(PagesAPIViewSet):
     # base_serializer_class = BlogPostSerializer
     authentication_classes = []
-    permission_classes = []
+    permission_classes = [AllowAny]  # Public API for blog index pages
 
     def get_queryset(self):
         return super().get_queryset().specific()
@@ -213,7 +213,7 @@ class BlogIndexPageAPIViewSet(PagesAPIViewSet):
 class BlogCategoryAPIViewSet(BaseAPIViewSet):
     """API endpoint for blog categories"""
 
-    permission_classes = []
+    permission_classes = [AllowAny]  # Public API for blog categories
     authentication_classes = []
     model = BlogCategory
 
