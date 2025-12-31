@@ -81,3 +81,27 @@ class CartDetailsSerializer(serializers.Serializer):
     shipping_cost = serializers.DecimalField(
         max_digits=12, decimal_places=0, required=False, default=0
     )
+
+
+# Input validation serializers for cart operations
+class AddCartItemSerializer(serializers.Serializer):
+    """Serializer for validating add item to cart requests"""
+
+    product_id = serializers.UUIDField()
+    quantity = serializers.IntegerField(min_value=1, default=1)
+    anonymous_cart_id = serializers.UUIDField(required=False, allow_null=True)
+
+
+class UpdateCartItemSerializer(serializers.Serializer):
+    """Serializer for validating update cart item quantity requests"""
+
+    product_id = serializers.UUIDField()
+    quantity = serializers.IntegerField(min_value=0)
+    anonymous_cart_id = serializers.UUIDField(required=False, allow_null=True)
+
+
+class RemoveCartItemSerializer(serializers.Serializer):
+    """Serializer for validating remove item from cart requests"""
+
+    product_id = serializers.UUIDField()
+    anonymous_cart_id = serializers.UUIDField(required=False, allow_null=True)

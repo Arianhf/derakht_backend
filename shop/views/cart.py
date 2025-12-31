@@ -12,7 +12,13 @@ from ..models.cart import Cart, CartItem
 from ..models.product import Product
 from ..models.promo import PromoCode
 from ..models.order import Order, OrderItem, ShippingInfo
-from ..serializers.cart import CartDetailsSerializer, CartItemSerializer
+from ..serializers.cart import (
+    CartDetailsSerializer,
+    CartItemSerializer,
+    AddCartItemSerializer,
+    UpdateCartItemSerializer,
+    RemoveCartItemSerializer,
+)
 from ..serializers.order import OrderSerializer
 from ..serializers.shipping import (
     ShippingEstimateRequestSerializer,
@@ -99,97 +105,61 @@ class CartViewSet(viewsets.ViewSet):
         """
         Add item to cart
         """
-        serializer = CartItemSerializer(data=request.data)
+        serializer = AddCartItemSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if serializer.is_valid():
-            product_id = serializer.validated_data["product_id"]
-            quantity = serializer.validated_data.get("quantity", 1)
-            anonymous_cart_id = serializer.validated_data.get("anonymous_cart_id")
+        product_id = serializer.validated_data["product_id"]
+        quantity = serializer.validated_data["quantity"]
+        anonymous_cart_id = serializer.validated_data.get("anonymous_cart_id")
 
-            # Try to convert anonymous_cart_id to UUID if provided
-            if anonymous_cart_id:
-                try:
-                    anonymous_cart_id = uuid.UUID(anonymous_cart_id)
-                except (ValueError, TypeError):
-                    return Response(
-                        {"error": "Invalid cart ID format"},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+        product = get_object_or_404(Product, id=product_id)
 
-            product = get_object_or_404(Product, id=product_id)
+        # Check if product is available
+        if not product.is_available:
+            return Response(
+                {"error": "Product is not available"},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
 
-            # Check if product is available
-            if not product.is_available:
-                return Response(
-                    {"error": "Product is not available"},
-                    status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                )
+        # Check if product is in stock
+        if product.stock < quantity:
+            return Response(
+                {"error": "Not enough stock available"},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
 
-            # Check if product is in stock
-            if product.stock < quantity:
+        # Get the appropriate cart
+        cart, created = self.get_cart(request, anonymous_cart_id)
+
+        # Get or create cart item
+        cart_item, item_created = CartItem.objects.get_or_create(
+            cart=cart, product=product, defaults={"quantity": quantity}
+        )
+
+        # If cart item already exists, update quantity
+        if not item_created:
+            cart_item.quantity += quantity
+            if cart_item.quantity > product.stock:
                 return Response(
                     {"error": "Not enough stock available"},
                     status=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 )
+            cart_item.save()
 
-            # Get the appropriate cart
-            cart, created = self.get_cart(request, anonymous_cart_id)
-
-            # Get or create cart item
-            cart_item, item_created = CartItem.objects.get_or_create(
-                cart=cart, product=product, defaults={"quantity": quantity}
-            )
-
-            # If cart item already exists, update quantity
-            if not item_created:
-                cart_item.quantity += quantity
-                if cart_item.quantity > product.stock:
-                    return Response(
-                        {"error": "Not enough stock available"},
-                        status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    )
-                cart_item.save()
-
-            # Get updated cart details
-            return self.details(request)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Get updated cart details
+        return self.details(request)
 
     @action(detail=False, methods=["post"])
     def update_quantity(self, request):
         """
         Update item quantity in cart
         """
-        product_id = request.data.get("product_id")
-        quantity = request.data.get("quantity", 1)
-        anonymous_cart_id = request.data.get("anonymous_cart_id")
+        serializer = UpdateCartItemSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        # Try to convert anonymous_cart_id to UUID if provided
-        if anonymous_cart_id:
-            try:
-                anonymous_cart_id = uuid.UUID(anonymous_cart_id)
-            except (ValueError, TypeError):
-                return Response(
-                    {"error": "Invalid cart ID format"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        try:
-            quantity = int(quantity)
-            if quantity < 0:
-                return Response(
-                    {"error": "Quantity cannot be negative"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        except (ValueError, TypeError):
-            return Response(
-                {"error": "Invalid quantity"}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if not product_id:
-            return Response(
-                {"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST
-            )
+        product_id = serializer.validated_data["product_id"]
+        quantity = serializer.validated_data["quantity"]
+        anonymous_cart_id = serializer.validated_data.get("anonymous_cart_id")
 
         # Get the appropriate cart
         cart, created = self.get_cart(request, anonymous_cart_id)
@@ -233,23 +203,11 @@ class CartViewSet(viewsets.ViewSet):
         """
         Remove item from cart
         """
-        product_id = request.data.get("product_id")
-        anonymous_cart_id = request.data.get("anonymous_cart_id")
+        serializer = RemoveCartItemSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        # Try to convert anonymous_cart_id to UUID if provided
-        if anonymous_cart_id:
-            try:
-                anonymous_cart_id = uuid.UUID(anonymous_cart_id)
-            except (ValueError, TypeError):
-                return Response(
-                    {"error": "Invalid cart ID format"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        if not product_id:
-            return Response(
-                {"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST
-            )
+        product_id = serializer.validated_data["product_id"]
+        anonymous_cart_id = serializer.validated_data.get("anonymous_cart_id")
 
         # Get the appropriate cart
         cart, created = self.get_cart(request, anonymous_cart_id)
