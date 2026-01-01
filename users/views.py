@@ -248,6 +248,32 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class SignUpView(generics.CreateAPIView):
+    """
+    User registration endpoint
+
+    CSRF EXEMPT JUSTIFICATION:
+    This endpoint is exempt from CSRF protection because:
+    1. This is a public registration endpoint accessed by unauthenticated users
+    2. No existing session or authenticated state exists to protect
+    3. Registration forms are typically accessed cross-origin from frontend applications
+    4. CSRF protection is designed to protect authenticated sessions, not public endpoints
+
+    SECURITY MEASURES:
+    - Email uniqueness validation prevents duplicate accounts
+    - Email verification token generation for account activation
+    - Password validation (strength requirements via Django validators)
+    - Rate limiting should be implemented at infrastructure level (TODO)
+    - Comprehensive input validation via SignUpSerializer
+    - No automatic authentication after registration (requires email verification)
+
+    ADDITIONAL SECURITY CONSIDERATIONS:
+    - Email verification required before account activation
+    - Password stored with Django's secure hashing (PBKDF2 by default)
+    - No sensitive operations possible without email verification
+    - All registration attempts logged for audit trail
+
+    TODO: Implement rate limiting to prevent abuse and account enumeration
+    """
     permission_classes = [AllowAny]
     serializer_class = SignUpSerializer
     authentication_classes = []
