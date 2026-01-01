@@ -1,6 +1,7 @@
 # core/views.py
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.search import TrigramSimilarity
+from django.core.cache import cache
 from django.db.models import Q, Value, FloatField, CharField
 from django.db.models.functions import Greatest
 from django.shortcuts import get_object_or_404
@@ -9,6 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+import hashlib
 
 from blog.models import BlogPost
 from shop.models.product import Product
@@ -23,10 +25,18 @@ logger = get_logger(__name__)
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def feature_flags(request):
-    """Get all feature flags"""
-    flags = FeatureFlag.objects.all()
-    serializer = FeatureFlagSerializer(flags, many=True)
-    return Response(serializer.data)
+    """Get all feature flags with caching"""
+    cache_key = 'feature_flags:all'
+    flags_data = cache.get(cache_key)
+
+    if flags_data is None:
+        flags = FeatureFlag.objects.all()
+        serializer = FeatureFlagSerializer(flags, many=True)
+        flags_data = serializer.data
+        # Cache for 5 minutes (300 seconds)
+        cache.set(cache_key, flags_data, 300)
+
+    return Response(flags_data)
 
 
 @api_view(['GET'])
@@ -42,6 +52,7 @@ def feature_flag_detail(request, name):
 def global_search(request):
     """
     Global search endpoint that searches across blogs and products with fuzzy matching.
+    Results are cached for 5 minutes to improve performance.
 
     Query parameters:
     - q: Search query (required)
@@ -65,109 +76,120 @@ def global_search(request):
     except (ValueError, TypeError):
         threshold = 0.1
 
-    # Search blogs using trigram similarity
-    blog_results = BlogPost.objects.live().select_related('header_image').annotate(
-        title_similarity=TrigramSimilarity('title', query),
-        subtitle_similarity=TrigramSimilarity('subtitle', query),
-        intro_similarity=TrigramSimilarity('intro', query),
-        # Calculate the maximum similarity across all fields
-        similarity=Greatest(
-            'title_similarity',
-            'subtitle_similarity',
-            'intro_similarity',
+    # Create cache key from query and threshold
+    cache_key = f"search:{hashlib.md5(f'{query}:{threshold}'.encode()).hexdigest()}"
+    cached_results = cache.get(cache_key)
+
+    if cached_results is not None:
+        # Return cached results with pagination
+        all_results = cached_results
+    else:
+        # Search blogs using trigram similarity
+        blog_results = BlogPost.objects.live().select_related('header_image').annotate(
+            title_similarity=TrigramSimilarity('title', query),
+            subtitle_similarity=TrigramSimilarity('subtitle', query),
+            intro_similarity=TrigramSimilarity('intro', query),
+            # Calculate the maximum similarity across all fields
+            similarity=Greatest(
+                'title_similarity',
+                'subtitle_similarity',
+                'intro_similarity',
+            )
+        ).filter(
+            similarity__gte=threshold
         )
-    ).filter(
-        similarity__gte=threshold
-    )
 
-    # Search products using trigram similarity
-    product_results = Product.objects.filter(
-        is_active=True,
-        is_available=True
-    ).prefetch_related('images').annotate(
-        title_similarity=TrigramSimilarity('title', query),
-        description_similarity=TrigramSimilarity('description', query),
-        sku_similarity=TrigramSimilarity('sku', query),
-        # Calculate the maximum similarity across all fields
-        similarity=Greatest(
-            'title_similarity',
-            'description_similarity',
-            'sku_similarity',
+        # Search products using trigram similarity
+        product_results = Product.objects.filter(
+            is_active=True,
+            is_available=True
+        ).prefetch_related('images').annotate(
+            title_similarity=TrigramSimilarity('title', query),
+            description_similarity=TrigramSimilarity('description', query),
+            sku_similarity=TrigramSimilarity('sku', query),
+            # Calculate the maximum similarity across all fields
+            similarity=Greatest(
+                'title_similarity',
+                'description_similarity',
+                'sku_similarity',
+            )
+        ).filter(
+            similarity__gte=threshold
         )
-    ).filter(
-        similarity__gte=threshold
-    )
 
-    # Combine results
-    blog_list = []
-    for blog in blog_results:
-        # Get header image URL if it exists
-        header_image_url = None
-        if blog.header_image:
-            try:
-                # Get a medium-sized rendition for the search results
-                rendition = blog.header_image.get_rendition('fill-400x300')
-                header_image_url = rendition.url
-            except Exception as e:
-                # Fallback to original if rendition fails
-                logger.warning(
-                    f"Failed to generate blog header image rendition: {e}",
-                    extra={"extra_data": {"blog_id": blog.id, "error": str(e)}}
-                )
-                header_image_url = blog.header_image.file.url if blog.header_image.file else None
+        # Combine results
+        blog_list = []
+        for blog in blog_results:
+            # Get header image URL if it exists
+            header_image_url = None
+            if blog.header_image:
+                try:
+                    # Get a medium-sized rendition for the search results
+                    rendition = blog.header_image.get_rendition('fill-400x300')
+                    header_image_url = rendition.url
+                except Exception as e:
+                    # Fallback to original if rendition fails
+                    logger.warning(
+                        f"Failed to generate blog header image rendition: {e}",
+                        extra={"extra_data": {"blog_id": blog.id, "error": str(e)}}
+                    )
+                    header_image_url = blog.header_image.file.url if blog.header_image.file else None
 
-        blog_list.append({
-            'id': blog.id,
-            'type': 'blog',
-            'title': blog.title,
-            'subtitle': blog.subtitle or '',
-            'description': blog.intro,
-            'slug': blog.slug,
-            'date': blog.date,
-            'similarity': round(blog.similarity, 3),
-            'featured': blog.featured,
-            'hero': blog.hero,
-            'reading_time': blog.reading_time,
-            'header_image': header_image_url,
-            'url': f'/blog/{blog.slug}/'
-        })
+            blog_list.append({
+                'id': blog.id,
+                'type': 'blog',
+                'title': blog.title,
+                'subtitle': blog.subtitle or '',
+                'description': blog.intro,
+                'slug': blog.slug,
+                'date': blog.date,
+                'similarity': round(blog.similarity, 3),
+                'featured': blog.featured,
+                'hero': blog.hero,
+                'reading_time': blog.reading_time,
+                'header_image': header_image_url,
+                'url': f'/blog/{blog.slug}/'
+            })
 
-    product_list = []
-    for product in product_results:
-        # Get feature image URL if it exists
-        feature_image_url = None
-        feature_img = product.feature_image
-        if feature_img and feature_img.image:
-            try:
-                # Get a medium-sized rendition for the search results
-                rendition = feature_img.image.get_rendition('fill-400x300')
-                feature_image_url = rendition.url
-            except Exception as e:
-                # Fallback to original if rendition fails
-                logger.warning(
-                    f"Failed to generate product feature image rendition: {e}",
-                    extra={"extra_data": {"product_id": str(product.id), "error": str(e)}}
-                )
-                feature_image_url = feature_img.image.file.url if feature_img.image.file else None
+        product_list = []
+        for product in product_results:
+            # Get feature image URL if it exists
+            feature_image_url = None
+            feature_img = product.feature_image
+            if feature_img and feature_img.image:
+                try:
+                    # Get a medium-sized rendition for the search results
+                    rendition = feature_img.image.get_rendition('fill-400x300')
+                    feature_image_url = rendition.url
+                except Exception as e:
+                    # Fallback to original if rendition fails
+                    logger.warning(
+                        f"Failed to generate product feature image rendition: {e}",
+                        extra={"extra_data": {"product_id": str(product.id), "error": str(e)}}
+                    )
+                    feature_image_url = feature_img.image.file.url if feature_img.image.file else None
 
-        product_list.append({
-            'id': product.id,
-            'type': 'product',
-            'title': product.title,
-            'description': product.description,
-            'slug': product.slug,
-            'price': str(product.price),
-            'sku': product.sku,
-            'similarity': round(product.similarity, 3),
-            'stock': product.stock,
-            'is_available': product.is_available,
-            'feature_image': feature_image_url,
-            'url': f'/shop/products/{product.slug}/'
-        })
+            product_list.append({
+                'id': product.id,
+                'type': 'product',
+                'title': product.title,
+                'description': product.description,
+                'slug': product.slug,
+                'price': str(product.price),
+                'sku': product.sku,
+                'similarity': round(product.similarity, 3),
+                'stock': product.stock,
+                'is_available': product.is_available,
+                'feature_image': feature_image_url,
+                'url': f'/shop/products/{product.slug}/'
+            })
 
-    # Combine and sort by similarity (relevance)
-    all_results = blog_list + product_list
-    all_results.sort(key=lambda x: x['similarity'], reverse=True)
+        # Combine and sort by similarity (relevance)
+        all_results = blog_list + product_list
+        all_results.sort(key=lambda x: x['similarity'], reverse=True)
+
+        # Cache the results for 5 minutes (300 seconds)
+        cache.set(cache_key, all_results, 300)
 
     # Pagination
     page_size = int(request.GET.get('page_size', 10))
@@ -179,12 +201,16 @@ def global_search(request):
     # Paginate the results
     paginated_results = paginator.paginate_queryset(all_results, request)
 
+    # Calculate counts from all_results (works for both cached and fresh results)
+    blog_count = sum(1 for r in all_results if r.get('type') == 'blog')
+    product_count = sum(1 for r in all_results if r.get('type') == 'product')
+
     return paginator.get_paginated_response({
         'query': query,
         'threshold': threshold,
         'total_results': len(all_results),
-        'blog_count': len(blog_list),
-        'product_count': len(product_list),
+        'blog_count': blog_count,
+        'product_count': product_count,
         'results': paginated_results
     })
 
