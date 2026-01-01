@@ -28,8 +28,19 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = OrderPagination
 
     def get_queryset(self):
-        return Order.objects.filter(user=self.request.user).prefetch_related(
-            "items", "items__product"
+        # Optimize queries to prevent N+1 issues
+        return (
+            Order.objects.filter(user=self.request.user)
+            .select_related(
+                "shipping_info",
+                "payment_info",
+            )
+            .prefetch_related(
+                "items",
+                "items__product",
+                "items__product__category",
+                "items__product__images",
+            )
         )
 
     def get_serializer_class(self):
