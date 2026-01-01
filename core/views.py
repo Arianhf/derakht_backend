@@ -394,6 +394,15 @@ def comment_delete(request, comment_id):
             is_deleted=False
         )
     except Comment.DoesNotExist:
+        logger.warning(
+            "Comment not found for deletion",
+            extra={
+                "extra_data": {
+                    "comment_id": str(comment_id),
+                    "user_id": request.user.id,
+                }
+            },
+        )
         return Response({
             "code": "COMMENT_NOT_FOUND",
             "message": "Comment not found",
