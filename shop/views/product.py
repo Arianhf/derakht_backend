@@ -44,6 +44,13 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
 
+        # Optimize queries to prevent N+1 issues
+        queryset = queryset.select_related(
+            'category'
+        ).prefetch_related(
+            'images',
+        )
+
         # Filter by search query
         search = self.request.query_params.get("search")
         if search:
