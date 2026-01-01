@@ -73,7 +73,8 @@ class StoryTemplateViewSet(viewsets.ModelViewSet):
         return StoryTemplateSerializer
 
     def get_queryset(self):
-        queryset = StoryTemplate.objects.all()
+        # Optimize queries to prevent N+1 issues
+        queryset = StoryTemplate.objects.all().prefetch_related("template_parts")
         activity_type = self.request.query_params.get("activity_type", None)
         if activity_type:
             queryset = queryset.filter(activity_type=activity_type)
@@ -391,19 +392,24 @@ class StoryViewSet(viewsets.ModelViewSet):
         - For 'retrieve' action: Return user's own stories + all completed stories from others
         - For other actions: Return only user's own stories
         """
+        # Optimize queries to prevent N+1 issues
+        base_queryset = Story.objects.select_related(
+            "author", "story_template"
+        ).prefetch_related("parts", "parts__story_part_template")
+
         if self.action == 'retrieve':
             # Allow access to completed stories from anyone, plus user's own stories
             if self.request.user.is_authenticated:
                 # Authenticated users can see their own stories (all statuses) + completed stories from others
-                return Story.objects.filter(
+                return base_queryset.filter(
                     models.Q(author=self.request.user) | models.Q(status=StoryStatus.COMPLETED)
                 ).distinct()
             else:
                 # Anonymous users can only see completed stories
-                return Story.objects.filter(status=StoryStatus.COMPLETED)
+                return base_queryset.filter(status=StoryStatus.COMPLETED)
 
         # For list, create, update, delete: only user's own stories
-        return Story.objects.filter(author=self.request.user)
+        return base_queryset.filter(author=self.request.user)
 
     @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
     @method_decorator(csrf_exempt)
