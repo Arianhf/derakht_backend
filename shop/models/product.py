@@ -43,6 +43,12 @@ class Product(BaseModel):
         verbose_name = _("Product")
         verbose_name_plural = _("Products")
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=['is_active', 'is_available', 'is_visible'], name='product_active_idx'),
+            models.Index(fields=['category', '-created_at'], name='product_category_idx'),
+            models.Index(fields=['min_age', 'max_age'], name='product_age_idx'),
+            models.Index(fields=['slug'], name='product_slug_idx'),
+        ]
 
     def __str__(self):
         return self.title

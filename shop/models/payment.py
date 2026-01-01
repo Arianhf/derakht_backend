@@ -44,6 +44,10 @@ class Payment(BaseModel):
         verbose_name = _("Payment")
         verbose_name_plural = _("Payments")
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=['order'], name='payment_order_idx'),
+            models.Index(fields=['status', '-created_at'], name='payment_status_idx'),
+        ]
 
     def __str__(self):
         return f"Payment {self.id} for Order {self.order.id}"
