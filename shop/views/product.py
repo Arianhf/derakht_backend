@@ -3,6 +3,7 @@ from django.urls import path
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from wagtail.api.v2.views import PagesAPIViewSet
@@ -12,6 +13,15 @@ from ..models.product import ProductInfoPage
 from ..serializers.product import ProductSerializer, CategorySerializer
 
 
+class ProductPagination(PageNumberPagination):
+    """
+    Pagination class for product listings
+    """
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     """
     API endpoint for products
@@ -19,6 +29,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Product.objects.filter(is_active=True, is_available=True, is_visible=True)
     serializer_class = ProductSerializer
+    pagination_class = ProductPagination
     lookup_field = "slug"
     permission_classes = [permissions.AllowAny]
     filter_backends = [
@@ -32,6 +43,13 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+
+        # Optimize queries to prevent N+1 issues
+        queryset = queryset.select_related(
+            'category'
+        ).prefetch_related(
+            'images',
+        )
 
         # Filter by search query
         search = self.request.query_params.get("search")

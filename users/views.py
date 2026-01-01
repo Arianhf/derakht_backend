@@ -12,6 +12,7 @@ from rest_framework import generics
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -119,9 +120,19 @@ class ProfileImageView(APIView):
         )
 
 
+class AddressPagination(PageNumberPagination):
+    """
+    Pagination class for address listings
+    """
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class AddressViewSet(viewsets.ModelViewSet):
     serializer_class = AddressSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = AddressPagination
 
     def get_queryset(self):
         return Address.objects.filter(user=self.request.user)

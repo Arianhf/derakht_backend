@@ -3,9 +3,19 @@
 from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from ..models import Order, PaymentInfo
 from ..serializers.order import OrderSerializer, OrderDetailSerializer
+
+
+class OrderPagination(PageNumberPagination):
+    """
+    Pagination class for order listings
+    """
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 50
 
 
 class OrderViewSet(viewsets.ReadOnlyModelViewSet):
@@ -15,6 +25,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
 
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = OrderSerializer
+    pagination_class = OrderPagination
 
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user).prefetch_related(
