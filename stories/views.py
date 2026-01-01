@@ -398,7 +398,22 @@ class StoryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
     @method_decorator(csrf_exempt)
     def upload_cover(self, request, pk=None):
-        """API endpoint to upload cover image for a story"""
+        """
+        API endpoint to upload cover image for a story
+
+        CSRF EXEMPT JUSTIFICATION:
+        - This is a JWT-authenticated API endpoint, not a session-based view
+        - Authentication via Authorization header (Bearer token), not cookies
+        - CSRF protection is designed for cookie-based session auth
+        - Modern API pattern using stateless JWT authentication
+
+        SECURITY MEASURES:
+        - Requires valid JWT token (IsAuthenticated permission class)
+        - User can only upload cover for their own stories (get_object checks ownership)
+        - File type validation via serializer
+        - File size limits enforced by MultiPartParser configuration
+        - Comprehensive logging of all upload attempts
+        """
         story = self.get_object()
 
         if "cover_image" not in request.FILES:
@@ -457,7 +472,20 @@ class StoryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     @method_decorator(csrf_exempt)
     def set_config(self, request, pk=None):
-        """API endpoint to set story configuration (colors, fonts, etc.)"""
+        """
+        API endpoint to set story configuration (colors, fonts, etc.)
+
+        CSRF EXEMPT JUSTIFICATION:
+        - JWT-authenticated API endpoint using stateless authentication
+        - No session cookies involved in authentication mechanism
+        - Authorization via Bearer token in header
+
+        SECURITY MEASURES:
+        - JWT authentication required (IsAuthenticated)
+        - Ownership verification via get_object (user can only modify own stories)
+        - Input validation via model validators (full_clean)
+        - Color format validation for hex color codes
+        """
         story = self.get_object()
 
         background_color = request.data.get("background_color")
@@ -483,7 +511,21 @@ class StoryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     @method_decorator(csrf_exempt)
     def add_part(self, request, pk=None):
-        """Update a story part with canvas data"""
+        """
+        Update a story part with canvas data
+
+        CSRF EXEMPT JUSTIFICATION:
+        - JWT-based API endpoint with stateless authentication
+        - Uses Bearer token authentication, not session cookies
+        - Part of RESTful API consumed by frontend SPA
+
+        SECURITY MEASURES:
+        - Authentication required via JWT token
+        - User ownership validation (can only add parts to own stories)
+        - Template validation (story_part_template must belong to story's template)
+        - Canvas data validation via model fields
+        - Activity type validation ensures proper story workflow
+        """
         story = self.get_object()
         story_part_template_id = request.data.get("story_part_template_id")
 
@@ -569,7 +611,19 @@ class StoryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["patch"], url_path="title")
     @method_decorator(csrf_exempt)
     def update_title(self, request, pk=None):
-        """API endpoint to update story title"""
+        """
+        API endpoint to update story title
+
+        CSRF EXEMPT JUSTIFICATION:
+        - JWT-authenticated API endpoint
+        - Stateless authentication via Authorization header
+        - No cookie-based session state
+
+        SECURITY MEASURES:
+        - JWT token required (IsAuthenticated)
+        - Ownership check via get_object
+        - Input validation (title required, non-empty)
+        """
         story = self.get_object()
 
         title = request.data.get("title")
@@ -586,6 +640,20 @@ class StoryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     @method_decorator(csrf_exempt)
     def finish(self, request, pk=None):
+        """
+        Mark story as completed
+
+        CSRF EXEMPT JUSTIFICATION:
+        - JWT-authenticated REST API endpoint
+        - Token-based authentication, not cookies
+        - Stateless architecture pattern
+
+        SECURITY MEASURES:
+        - JWT authentication required
+        - User can only finish their own stories (ownership check)
+        - Status transition validation (from IN_PROGRESS to COMPLETED)
+        - Comprehensive logging of completion events
+        """
         story = self.get_object()
 
         title = request.data.get("title")
@@ -724,6 +792,17 @@ class StoryPartViewSet(viewsets.GenericViewSet):
         - reset_text (bool): If true, reset text canvas. Default: false
         - reset_illustration (bool): If true, reset illustration canvas. Default: false
         - If both are false or not provided, reset both canvases (backward compatible)
+
+        CSRF EXEMPT JUSTIFICATION:
+        - JWT-authenticated API endpoint
+        - Stateless token authentication in Authorization header
+        - RESTful API consumed by SPA frontend
+
+        SECURITY MEASURES:
+        - JWT token authentication required
+        - Ownership validation (user can only reset own story parts)
+        - Template association validation
+        - Comprehensive logging of reset operations
         """
         story_part = self.get_object()
 
@@ -776,7 +855,30 @@ class StoryPartTemplateViewSet(viewsets.ModelViewSet):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class StoryPartImageUploadView(APIView):
-    """API endpoint to upload images to story parts for ILLUSTRATE type stories"""
+    """
+    API endpoint to upload images to story parts for ILLUSTRATE type stories
+
+    CSRF EXEMPT JUSTIFICATION:
+    This endpoint is exempt from CSRF protection because:
+    1. JWT-authenticated API endpoint using Bearer token authentication
+    2. Stateless authentication - no session cookies involved
+    3. Modern API pattern for file uploads from SPA frontend
+    4. MultiPartParser handles file uploads which don't work well with CSRF tokens
+
+    SECURITY MEASURES:
+    - JWT authentication required (IsAuthenticated permission class)
+    - User ownership validation (can only upload to own story parts)
+    - File type validation via StoryPartImageUploadSerializer
+    - File size limits enforced by parser configuration
+    - Story part existence validation
+    - Comprehensive logging of all upload attempts with user context
+    - Image validation ensures only valid image formats accepted
+
+    ADDITIONAL SECURITY CONSIDERATIONS:
+    - Uploaded files stored with UUID-based filenames preventing path traversal
+    - S3/MinIO storage with appropriate access controls
+    - All upload failures logged for security monitoring
+    """
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 

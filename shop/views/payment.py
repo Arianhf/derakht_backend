@@ -164,6 +164,27 @@ class PaymentRequestView(APIView):
 class PaymentCallbackView(APIView):
     """
     API view to handle payment gateway callbacks
+
+    CSRF EXEMPT JUSTIFICATION:
+    This endpoint is exempt from CSRF protection because:
+    1. This is a callback endpoint for external payment gateways (e.g., Zarinpal)
+    2. Requests originate from the payment gateway's servers, not from user browsers
+    3. No browser cookies or session data are involved in the verification process
+
+    SECURITY MEASURES:
+    - Payment verification with gateway using authority token (request parameter)
+    - Payment status validation to prevent duplicate processing
+    - Payment amount validation to ensure it matches the order total
+    - Comprehensive logging of all callback attempts with IP addresses
+    - Payment ID validation (must exist in database)
+    - Order status checks prevent replay attacks
+
+    ADDITIONAL SECURITY CONSIDERATIONS:
+    - Frontend redirects use read-only query parameters
+    - No state changes occur without successful gateway verification
+    - All callback attempts are logged to audit trail
+
+    TODO: Consider adding gateway signature verification for additional security layer
     """
 
     permission_classes = []  # Allow unauthenticated access for callbacks
