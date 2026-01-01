@@ -22,7 +22,11 @@ from core.logging_utils import (
 )
 from ..models import Order, Payment, PaymentTransaction
 from ..services.payment import PaymentService
-from ..serializers.payment import PaymentReceiptUploadSerializer
+from ..serializers.payment import (
+    PaymentReceiptUploadSerializer,
+    PaymentVerificationSerializer,
+    PaymentRequestSerializer,
+)
 from ..choices import PaymentStatus
 
 # Initialize loggers
@@ -41,6 +45,12 @@ class PaymentRequestView(APIView):
         """
         Initiate payment for an order
         """
+        # Validate input data
+        serializer = PaymentRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        gateway_name = serializer.validated_data.get("gateway")
+
         # Get the order
         order = get_object_or_404(Order, id=order_id, user=request.user)
 
@@ -70,9 +80,6 @@ class PaymentRequestView(APIView):
                 {"error": "Payment can only be requested for pending orders"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        # Get the gateway name from request data
-        gateway_name = request.data.get("gateway")
 
         try:
             # Request payment
@@ -165,6 +172,27 @@ class PaymentRequestView(APIView):
 class PaymentCallbackView(APIView):
     """
     API view to handle payment gateway callbacks
+
+    CSRF EXEMPT JUSTIFICATION:
+    This endpoint is exempt from CSRF protection because:
+    1. This is a callback endpoint for external payment gateways (e.g., Zarinpal)
+    2. Requests originate from the payment gateway's servers, not from user browsers
+    3. No browser cookies or session data are involved in the verification process
+
+    SECURITY MEASURES:
+    - Payment verification with gateway using authority token (request parameter)
+    - Payment status validation to prevent duplicate processing
+    - Payment amount validation to ensure it matches the order total
+    - Comprehensive logging of all callback attempts with IP addresses
+    - Payment ID validation (must exist in database)
+    - Order status checks prevent replay attacks
+
+    ADDITIONAL SECURITY CONSIDERATIONS:
+    - Frontend redirects use read-only query parameters
+    - No state changes occur without successful gateway verification
+    - All callback attempts are logged to audit trail
+
+    TODO: Consider adding gateway signature verification for additional security layer
     """
 
     permission_classes = [AllowAny]  # Allow unauthenticated callbacks from payment gateway
@@ -368,15 +396,14 @@ class PaymentVerificationView(APIView):
         Expects:
         - order_id: UUID of the order
         - transaction_id: Transaction ID from payment gateway
+        - authority: (optional) Authority code from payment gateway
         """
-        order_id = request.data.get("order_id")
-        transaction_id = request.data.get("transaction_id")
+        # Validate input data
+        serializer = PaymentVerificationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if not order_id or not transaction_id:
-            return Response(
-                {"error": "Order ID and transaction ID are required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        order_id = serializer.validated_data["order_id"]
+        transaction_id = serializer.validated_data["transaction_id"]
 
         # Get the order and verify it belongs to the user
         order = get_object_or_404(Order, id=order_id)
