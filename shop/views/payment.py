@@ -328,6 +328,17 @@ class PaymentStatusView(APIView):
 
         # Check if the payment belongs to the user
         if payment.order.user != request.user:
+            log_security_event(
+                logger,
+                "unauthorized_payment_access_attempt",
+                severity="warning",
+                user_id=request.user.id,
+                extra_data={
+                    "payment_id": str(payment.id),
+                    "order_id": str(payment.order.id),
+                    "order_owner_id": payment.order.user.id if payment.order.user else None,
+                },
+            )
             return Response(
                 {"error": "You don't have permission to view this payment"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -408,6 +419,16 @@ class PaymentVerificationView(APIView):
         # Get the order and verify it belongs to the user
         order = get_object_or_404(Order, id=order_id)
         if order.user != request.user:
+            log_security_event(
+                logger,
+                "unauthorized_order_verification_attempt",
+                severity="warning",
+                user_id=request.user.id,
+                extra_data={
+                    "order_id": str(order.id),
+                    "order_owner_id": order.user.id if order.user else None,
+                },
+            )
             return Response(
                 {"error": "You don't have permission to access this order"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -417,6 +438,16 @@ class PaymentVerificationView(APIView):
         try:
             payment = Payment.objects.filter(order=order).latest("created_at")
         except Payment.DoesNotExist:
+            logger.warning(
+                "Payment verification attempted but no payment found",
+                extra={
+                    "extra_data": {
+                        "order_id": str(order.id),
+                        "user_id": request.user.id,
+                        "transaction_id": transaction_id,
+                    }
+                },
+            )
             return Response(
                 {"error": "No payment found for this order"},
                 status=status.HTTP_404_NOT_FOUND,
@@ -500,6 +531,16 @@ class PaymentReceiptUploadView(APIView):
         # Get the order and verify it belongs to the user
         order = get_object_or_404(Order, id=order_id)
         if order.user != request.user:
+            log_security_event(
+                logger,
+                "unauthorized_receipt_upload_attempt",
+                severity="warning",
+                user_id=request.user.id,
+                extra_data={
+                    "order_id": str(order.id),
+                    "order_owner_id": order.user.id if order.user else None,
+                },
+            )
             return Response(
                 {"error": "You don't have permission to access this order"},
                 status=status.HTTP_403_FORBIDDEN,
