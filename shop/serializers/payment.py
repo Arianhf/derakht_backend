@@ -4,6 +4,21 @@ from rest_framework import serializers
 from ..models import Payment, PaymentTransaction
 
 
+# Input validation serializers for payment operations
+class PaymentVerificationSerializer(serializers.Serializer):
+    """Serializer for validating payment verification requests"""
+
+    order_id = serializers.UUIDField(required=True)
+    transaction_id = serializers.CharField(required=True, max_length=100)
+    authority = serializers.CharField(required=False, max_length=100, allow_blank=True)
+
+
+class PaymentRequestSerializer(serializers.Serializer):
+    """Serializer for validating payment request data"""
+
+    gateway = serializers.CharField(required=False, max_length=50, allow_blank=True)
+
+
 class PaymentReceiptUploadSerializer(serializers.Serializer):
     """Serializer for uploading payment receipt"""
 
