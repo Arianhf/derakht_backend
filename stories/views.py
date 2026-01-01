@@ -53,6 +53,7 @@ audit_logger = get_logger("audit")
 class StoryTemplateViewSet(viewsets.ModelViewSet):
     queryset = StoryTemplate.objects.all()
     serializer_class = StoryTemplateSerializer
+    pagination_class = CustomPageNumberPagination
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_permissions(self):
