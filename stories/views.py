@@ -107,21 +107,26 @@ class StoryTemplateViewSet(viewsets.ModelViewSet):
                     size=template.size,
                 )
 
-                # Create story parts with deep copied canvas data from template
-                parts_created = 0
-                for story_part_template in template.template_parts.all():
+                # Create story parts with deep copied canvas data from template using bulk_create
+                template_parts = template.template_parts.all()
+                story_parts = []
+                for story_part_template in template_parts:
                     # Deep copy canvas JSON data from template to user instance
                     canvas_text_data = copy.deepcopy(story_part_template.canvas_text_template) if story_part_template.canvas_text_template else None
                     canvas_illustration_data = copy.deepcopy(story_part_template.canvas_illustration_template) if story_part_template.canvas_illustration_template else None
 
-                    StoryPart.objects.create(
-                        story=story,
-                        position=story_part_template.position,
-                        story_part_template=story_part_template,
-                        canvas_text_data=canvas_text_data,
-                        canvas_illustration_data=canvas_illustration_data,
+                    story_parts.append(
+                        StoryPart(
+                            story=story,
+                            position=story_part_template.position,
+                            story_part_template=story_part_template,
+                            canvas_text_data=canvas_text_data,
+                            canvas_illustration_data=canvas_illustration_data,
+                        )
                     )
-                    parts_created += 1
+
+                StoryPart.objects.bulk_create(story_parts)
+                parts_created = len(story_parts)
 
                 generation_logger.info(
                     f"Story created from template: {story.id}",

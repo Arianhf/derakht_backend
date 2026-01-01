@@ -538,14 +538,18 @@ class CartViewSet(viewsets.ViewSet):
             phone_number=shipping_info["phone_number"],
         )
 
-        # Create order items with optimized query
-        for cart_item in cart.items.select_related("product").all():
-            OrderItem.objects.create(
+        # Create order items using bulk_create for better performance
+        cart_items = cart.items.select_related('product').all()
+        order_items = [
+            OrderItem(
                 order=order,
-                product=cart_item.product,
-                quantity=cart_item.quantity,
-                price=cart_item.product.price,
+                product=item.product,
+                quantity=item.quantity,
+                price=item.product.price,
             )
+            for item in cart_items
+        ]
+        OrderItem.objects.bulk_create(order_items)
 
         # Clear cart after checkout
         cart.items.all().delete()
