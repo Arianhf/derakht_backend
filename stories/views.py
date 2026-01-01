@@ -288,6 +288,16 @@ class StoryTemplateViewSet(viewsets.ModelViewSet):
             )
 
         if not part_index or not part_index.isdigit():
+            images_logger.warning(
+                "Template image upload failed: Invalid part_index",
+                extra={
+                    "extra_data": {
+                        "template_id": str(template.id),
+                        "part_index": part_index,
+                        "user_id": request.user.id,
+                    }
+                },
+            )
             return Response(
                 {'error': 'Valid part_index is required'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -503,6 +513,16 @@ class StoryViewSet(viewsets.ModelViewSet):
             story.save()
             return Response(StorySerializer(story).data, status=status.HTTP_200_OK)
         except ValidationError as e:
+            logger.warning(
+                "Story color update validation failed",
+                extra={
+                    "extra_data": {
+                        "story_id": str(story.id),
+                        "user_id": request.user.id,
+                        "errors": e.message_dict,
+                    }
+                },
+            )
             return Response(
                 {"error": e.message_dict},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -739,6 +759,18 @@ class StoryCollectionViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(collection)
             return Response(serializer.data)
         except Exception as e:
+            logger.error(
+                "Failed to add stories to collection",
+                extra={
+                    "extra_data": {
+                        "collection_id": str(collection.id),
+                        "story_ids": story_ids,
+                        "error": str(e),
+                        "user_id": request.user.id if request.user.is_authenticated else None,
+                    }
+                },
+                exc_info=True,
+            )
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"])
@@ -752,6 +784,18 @@ class StoryCollectionViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(collection)
             return Response(serializer.data)
         except Exception as e:
+            logger.error(
+                "Failed to remove stories from collection",
+                extra={
+                    "extra_data": {
+                        "collection_id": str(collection.id),
+                        "story_ids": story_ids,
+                        "error": str(e),
+                        "user_id": request.user.id if request.user.is_authenticated else None,
+                    }
+                },
+                exc_info=True,
+            )
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 

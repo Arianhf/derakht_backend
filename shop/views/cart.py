@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 import uuid
 
+from core.logging_utils import get_logger
 from ..choices import OrderStatus
 from ..models.cart import Cart, CartItem
 from ..models.product import Product
@@ -25,6 +26,9 @@ from ..serializers.shipping import (
     ShippingEstimateResponseSerializer,
 )
 from ..services.shipping import ShippingCalculator
+
+# Initialize logger
+logger = get_logger(__name__)
 
 
 class CartViewSet(viewsets.ViewSet):
@@ -116,6 +120,21 @@ class CartViewSet(viewsets.ViewSet):
 
         # Check if product is available
         if not product.is_available:
+            logger.warning(
+                "Attempt to add unavailable product to cart",
+                extra={
+                    "extra_data": {
+                        "product_id": str(product.id),
+                        "product_title": product.title,
+                        "user_id": str(request.user.id)
+                        if request.user.is_authenticated
+                        else None,
+                        "anonymous_cart_id": str(anonymous_cart_id)
+                        if anonymous_cart_id
+                        else None,
+                    }
+                },
+            )
             return Response(
                 {"error": "Product is not available"},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -123,6 +142,20 @@ class CartViewSet(viewsets.ViewSet):
 
         # Check if product is in stock
         if product.stock < quantity:
+            logger.warning(
+                "Attempt to add product with insufficient stock to cart",
+                extra={
+                    "extra_data": {
+                        "product_id": str(product.id),
+                        "product_title": product.title,
+                        "requested_quantity": quantity,
+                        "available_stock": product.stock,
+                        "user_id": str(request.user.id)
+                        if request.user.is_authenticated
+                        else None,
+                    }
+                },
+            )
             return Response(
                 {"error": "Not enough stock available"},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -140,6 +173,20 @@ class CartViewSet(viewsets.ViewSet):
         if not item_created:
             cart_item.quantity += quantity
             if cart_item.quantity > product.stock:
+                logger.warning(
+                    "Attempt to update cart item exceeds available stock",
+                    extra={
+                        "extra_data": {
+                            "product_id": str(product.id),
+                            "product_title": product.title,
+                            "requested_total_quantity": cart_item.quantity,
+                            "available_stock": product.stock,
+                            "user_id": str(request.user.id)
+                            if request.user.is_authenticated
+                            else None,
+                        }
+                    },
+                )
                 return Response(
                     {"error": "Not enough stock available"},
                     status=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -174,6 +221,18 @@ class CartViewSet(viewsets.ViewSet):
 
         # Check if product is available
         if not product.is_available:
+            logger.warning(
+                "Attempt to update quantity for unavailable product",
+                extra={
+                    "extra_data": {
+                        "product_id": str(product.id),
+                        "product_title": product.title,
+                        "user_id": str(request.user.id)
+                        if request.user.is_authenticated
+                        else None,
+                    }
+                },
+            )
             return Response(
                 {"error": "Product is not available"},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -181,6 +240,20 @@ class CartViewSet(viewsets.ViewSet):
 
         # Check if product is in stock
         if product.stock < quantity:
+            logger.warning(
+                "Attempt to update product quantity exceeds available stock",
+                extra={
+                    "extra_data": {
+                        "product_id": str(product.id),
+                        "product_title": product.title,
+                        "requested_quantity": quantity,
+                        "available_stock": product.stock,
+                        "user_id": str(request.user.id)
+                        if request.user.is_authenticated
+                        else None,
+                    }
+                },
+            )
             return Response(
                 {"error": "Not enough stock available"},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -508,6 +581,18 @@ class CartViewSet(viewsets.ViewSet):
                 valid_to__gte=timezone.now(),
             )
         except PromoCode.DoesNotExist:
+            logger.warning(
+                "Invalid promo code attempt",
+                extra={
+                    "extra_data": {
+                        "code": code,
+                        "cart_id": str(cart.id),
+                        "user_id": str(request.user.id)
+                        if request.user.is_authenticated
+                        else None,
+                    }
+                },
+            )
             return Response(
                 {"error": "Invalid or expired promo code"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -515,6 +600,19 @@ class CartViewSet(viewsets.ViewSet):
 
         # Check if max uses has been reached
         if promo.max_uses and promo.used_count >= promo.max_uses:
+            logger.warning(
+                "Promo code usage limit exceeded",
+                extra={
+                    "extra_data": {
+                        "code": code,
+                        "max_uses": promo.max_uses,
+                        "used_count": promo.used_count,
+                        "user_id": str(request.user.id)
+                        if request.user.is_authenticated
+                        else None,
+                    }
+                },
+            )
             return Response(
                 {"error": "This promo code has reached its usage limit"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -524,6 +622,19 @@ class CartViewSet(viewsets.ViewSet):
 
         # Check if minimum purchase requirement is met
         if total_amount < promo.min_purchase:
+            logger.warning(
+                "Promo code minimum purchase requirement not met",
+                extra={
+                    "extra_data": {
+                        "code": code,
+                        "min_purchase": float(promo.min_purchase),
+                        "current_total": float(total_amount),
+                        "user_id": str(request.user.id)
+                        if request.user.is_authenticated
+                        else None,
+                    }
+                },
+            )
             return Response(
                 {
                     "error": f"Minimum purchase of {promo.min_purchase} is required to use this promo code"
