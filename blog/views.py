@@ -44,7 +44,13 @@ class BlogPostAPIViewSet(PagesAPIViewSet):
     )
 
     def get_queryset(self):
-        queryset = super().get_queryset().specific()
+        # Optimize queries to prevent N+1 issues
+        queryset = (
+            super().get_queryset()
+            .specific()
+            .select_related("owner", "header_image")
+            .prefetch_related("categories", "tags")
+        )
 
         # For the default list endpoint, exclude featured and hero posts
         if self.action == "listing_view" and not self.request.query_params:
@@ -305,7 +311,7 @@ def related_posts(request, post_id):
 
     # Priority 1: Explicitly related posts
     if hasattr(post, "related_posts") and post.related_posts.exists():
-        explicit_related = post.related_posts.live()
+        explicit_related = post.related_posts.live().select_related("header_image")
         result.extend(format_posts(explicit_related, "explicit"))
         included_ids.extend([p["id"] for p in result])
 
@@ -320,6 +326,7 @@ def related_posts(request, post_id):
             BlogPost.objects.live()
             .filter(categories__in=post.categories.all())
             .exclude(id__in=included_ids)
+            .select_related("header_image")
             .distinct()
             .order_by("-date")[:needed]
         )
@@ -338,6 +345,7 @@ def related_posts(request, post_id):
             BlogPost.objects.live()
             .filter(tags__in=post.tags.all())
             .exclude(id__in=included_ids)
+            .select_related("header_image")
             .distinct()
             .order_by("-date")[:needed]
         )
@@ -355,6 +363,7 @@ def related_posts(request, post_id):
         recent_posts = (
             BlogPost.objects.live()
             .exclude(id__in=included_ids)
+            .select_related("header_image")
             .order_by("-date")[:needed]
         )
 
