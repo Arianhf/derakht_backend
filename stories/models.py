@@ -122,6 +122,10 @@ class Story(models.Model):
 
     class Meta:
         ordering = ["-created_date"]
+        indexes = [
+            models.Index(fields=['author', 'status'], name='story_author_status_idx'),
+            models.Index(fields=['status', '-created_date'], name='story_status_date_idx'),
+        ]
 
 
 class StoryPartTemplate(models.Model):
