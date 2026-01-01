@@ -91,12 +91,19 @@ class CartViewSet(viewsets.ViewSet):
 
         cart, created = self.get_cart(request, anonymous_id)
 
+        # Optimize queries to prevent N+1 issues
+        cart_items = cart.items.select_related(
+            "product__category"
+        ).prefetch_related(
+            "product__images"
+        ).all()
+
         data = {
             "cart_id": str(cart.anonymous_id) if cart.anonymous_id else None,
             "is_authenticated": request.user.is_authenticated,
             "items_count": cart.items_count,
             "total_amount": cart.total_amount,
-            "items": cart.items.select_related("product").all(),
+            "items": cart_items,
             "applied_promo": None,
             "shipping_cost": 0,
         }
@@ -362,8 +369,8 @@ class CartViewSet(viewsets.ViewSet):
 
         # Clear cart first
         CartItem.objects.filter(cart__user=request.user).delete()
-        # Add items from anonymous cart to user cart
-        for anon_item in anonymous_cart.items.all():
+        # Add items from anonymous cart to user cart with optimized query
+        for anon_item in anonymous_cart.items.select_related("product").all():
             # Check if product already exists in user cart
             try:
                 user_item = CartItem.objects.get(
@@ -531,8 +538,8 @@ class CartViewSet(viewsets.ViewSet):
             phone_number=shipping_info["phone_number"],
         )
 
-        # Create order items
-        for cart_item in cart.items.all():
+        # Create order items with optimized query
+        for cart_item in cart.items.select_related("product").all():
             OrderItem.objects.create(
                 order=order,
                 product=cart_item.product,
@@ -659,12 +666,19 @@ class CartViewSet(viewsets.ViewSet):
         }
 
         # Get updated cart details with promo applied
+        # Optimize queries to prevent N+1 issues
+        cart_items_with_promo = cart.items.select_related(
+            "product__category"
+        ).prefetch_related(
+            "product__images"
+        ).all()
+
         data = {
             "cart_id": str(cart.anonymous_id) if cart.anonymous_id else None,
             "is_authenticated": request.user.is_authenticated,
             "items_count": cart.items_count,
             "total_amount": total_amount - discount_amount,
-            "items": cart.items.select_related("product").all(),
+            "items": cart_items_with_promo,
             "applied_promo": {"code": promo.code, "discount_amount": discount_amount},
             "shipping_cost": 0,  # This would be calculated based on location, etc.
         }
