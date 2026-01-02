@@ -18,6 +18,7 @@ from .models import FeatureFlag, Comment
 from .serializers import FeatureFlagSerializer, CommentSerializer, CreateCommentSerializer
 from .utils import is_feature_enabled
 from .logging_utils import get_logger
+from .services.search import SearchService
 
 logger = get_logger(__name__)
 
@@ -84,109 +85,12 @@ def global_search(request):
         # Return cached results with pagination
         all_results = cached_results
     else:
-        # Search blogs using trigram similarity
-        blog_results = BlogPost.objects.live().select_related('header_image').annotate(
-            title_similarity=TrigramSimilarity('title', query),
-            subtitle_similarity=TrigramSimilarity('subtitle', query),
-            intro_similarity=TrigramSimilarity('intro', query),
-            # Calculate the maximum similarity across all fields
-            similarity=Greatest(
-                'title_similarity',
-                'subtitle_similarity',
-                'intro_similarity',
-            )
-        ).filter(
-            similarity__gte=threshold
-        )
+        # Use SearchService to perform search
+        blog_list = SearchService.search_blogs(query, threshold, limit=100)
+        product_list = SearchService.search_products(query, threshold, limit=100)
 
-        # Search products using trigram similarity
-        product_results = Product.objects.filter(
-            is_active=True,
-            is_available=True
-        ).prefetch_related('images').annotate(
-            title_similarity=TrigramSimilarity('title', query),
-            description_similarity=TrigramSimilarity('description', query),
-            sku_similarity=TrigramSimilarity('sku', query),
-            # Calculate the maximum similarity across all fields
-            similarity=Greatest(
-                'title_similarity',
-                'description_similarity',
-                'sku_similarity',
-            )
-        ).filter(
-            similarity__gte=threshold
-        )
-
-        # Combine results
-        blog_list = []
-        for blog in blog_results:
-            # Get header image URL if it exists
-            header_image_url = None
-            if blog.header_image:
-                try:
-                    # Get a medium-sized rendition for the search results
-                    rendition = blog.header_image.get_rendition('fill-400x300')
-                    header_image_url = rendition.url
-                except Exception as e:
-                    # Fallback to original if rendition fails
-                    logger.warning(
-                        f"Failed to generate blog header image rendition: {e}",
-                        extra={"extra_data": {"blog_id": blog.id, "error": str(e)}}
-                    )
-                    header_image_url = blog.header_image.file.url if blog.header_image.file else None
-
-            blog_list.append({
-                'id': blog.id,
-                'type': 'blog',
-                'title': blog.title,
-                'subtitle': blog.subtitle or '',
-                'description': blog.intro,
-                'slug': blog.slug,
-                'date': blog.date,
-                'similarity': round(blog.similarity, 3),
-                'featured': blog.featured,
-                'hero': blog.hero,
-                'reading_time': blog.reading_time,
-                'header_image': header_image_url,
-                'url': f'/blog/{blog.slug}/'
-            })
-
-        product_list = []
-        for product in product_results:
-            # Get feature image URL if it exists
-            feature_image_url = None
-            feature_img = product.feature_image
-            if feature_img and feature_img.image:
-                try:
-                    # Get a medium-sized rendition for the search results
-                    rendition = feature_img.image.get_rendition('fill-400x300')
-                    feature_image_url = rendition.url
-                except Exception as e:
-                    # Fallback to original if rendition fails
-                    logger.warning(
-                        f"Failed to generate product feature image rendition: {e}",
-                        extra={"extra_data": {"product_id": str(product.id), "error": str(e)}}
-                    )
-                    feature_image_url = feature_img.image.file.url if feature_img.image.file else None
-
-            product_list.append({
-                'id': product.id,
-                'type': 'product',
-                'title': product.title,
-                'description': product.description,
-                'slug': product.slug,
-                'price': str(product.price),
-                'sku': product.sku,
-                'similarity': round(product.similarity, 3),
-                'stock': product.stock,
-                'is_available': product.is_available,
-                'feature_image': feature_image_url,
-                'url': f'/shop/products/{product.slug}/'
-            })
-
-        # Combine and sort by similarity (relevance)
-        all_results = blog_list + product_list
-        all_results.sort(key=lambda x: x['similarity'], reverse=True)
+        # Combine and sort results
+        all_results = SearchService.combine_and_sort_results(blog_list, product_list)
 
         # Cache the results for 5 minutes (300 seconds)
         cache.set(cache_key, all_results, 300)
