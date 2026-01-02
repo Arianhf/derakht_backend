@@ -13,6 +13,7 @@ from rest_framework import generics
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny
@@ -60,29 +61,28 @@ class UserView(APIView):
     def patch(self, request: Request) -> Response:
         """Update user profile"""
         serializer = UserSerializer(request.user, data=request.data, partial=True, context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-            logger.info(
-                f"User profile updated: {request.user.id}",
-                extra={
-                    "extra_data": {
-                        "user_id": request.user.id,
-                        "updated_fields": list(request.data.keys()),
-                    }
-                },
-            )
+        logger.info(
+            f"User profile updated: {request.user.id}",
+            extra={
+                "extra_data": {
+                    "user_id": request.user.id,
+                    "updated_fields": list(request.data.keys()),
+                }
+            },
+        )
 
-            log_user_action(
-                audit_logger,
-                "profile_updated",
-                user_id=request.user.id,
-                user_email=request.user.email,
-                extra_data={"updated_fields": list(request.data.keys())},
-            )
+        log_user_action(
+            audit_logger,
+            "profile_updated",
+            user_id=request.user.id,
+            user_email=request.user.email,
+            extra_data={"updated_fields": list(request.data.keys())},
+        )
 
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.data)
 
 
 class ProfileImageView(APIView):
@@ -95,17 +95,16 @@ class ProfileImageView(APIView):
             data=request.data,
             partial=True
         )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                {
-                    "message": "Profile image uploaded successfully",
-                    "profile_image": serializer.data.get('profile_image')
-                },
-                status=status.HTTP_200_OK
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "message": "Profile image uploaded successfully",
+                "profile_image": serializer.data.get('profile_image')
+            },
+            status=status.HTTP_200_OK
+        )
 
     def delete(self, request):
         """Delete profile image"""
@@ -155,48 +154,13 @@ class AuthView(APIView):
     def login(self, request):
         """User login"""
         serializer = UserLoginSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data["email"]
-            password = serializer.validated_data["password"]
-            user = authenticate(request, email=email, password=password)
+        serializer.is_valid(raise_exception=True)
 
-            if user:
-                refresh = RefreshToken.for_user(user)
+        email = serializer.validated_data["email"]
+        password = serializer.validated_data["password"]
+        user = authenticate(request, email=email, password=password)
 
-                auth_logger.info(
-                    f"User login successful",
-                    extra={
-                        "extra_data": {
-                            "user_id": user.id,
-                            "email_hash": hash_email(user.email),
-                            "ip_address": get_client_ip(request),
-                        }
-                    },
-                )
-
-                log_user_action(
-                    audit_logger,
-                    "user_login",
-                    user_id=user.id,
-                    user_email=user.email,
-                    extra_data={"ip_address": get_client_ip(request)},
-                )
-
-                log_analytics_event(
-                    "user_login",
-                    "users",
-                    user_id=user.id,
-                    properties={"ip_address": get_client_ip(request)},
-                )
-
-                return Response(
-                    {
-                        "access": str(refresh.access_token),
-                        "refresh": str(refresh),
-                        "user": UserSerializer(user).data,
-                    }
-                )
-
+        if not user:
             # Log failed login attempt
             log_security_event(
                 "auth_failure",
@@ -205,54 +169,84 @@ class AuthView(APIView):
                 ip_address=get_client_ip(request),
                 extra_data={"email": email},
             )
+            raise ValidationError("Invalid credentials")
 
-            return Response(
-                {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
-            )
+        refresh = RefreshToken.for_user(user)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        auth_logger.info(
+            f"User login successful",
+            extra={
+                "extra_data": {
+                    "user_id": user.id,
+                    "email_hash": hash_email(user.email),
+                    "ip_address": get_client_ip(request),
+                }
+            },
+        )
+
+        log_user_action(
+            audit_logger,
+            "user_login",
+            user_id=user.id,
+            user_email=user.email,
+            extra_data={"ip_address": get_client_ip(request)},
+        )
+
+        log_analytics_event(
+            "user_login",
+            "users",
+            user_id=user.id,
+            properties={"ip_address": get_client_ip(request)},
+        )
+
+        return Response(
+            {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": UserSerializer(user).data,
+            }
+        )
 
     @action(detail=False, methods=["post"])
     def signup(self, request):
         """User registration"""
         serializer = UserRegistrationSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
 
-            auth_logger.info(
-                f"New user registered: {user.email}",
-                extra={
-                    "extra_data": {
-                        "user_id": user.id,
-                        "email": user.email,
-                        "ip_address": get_client_ip(request),
-                    }
-                },
-            )
+        auth_logger.info(
+            f"New user registered: {user.email}",
+            extra={
+                "extra_data": {
+                    "user_id": user.id,
+                    "email": user.email,
+                    "ip_address": get_client_ip(request),
+                }
+            },
+        )
 
-            log_user_action(
-                audit_logger,
-                "user_registered",
-                user_id=user.id,
-                user_email=user.email,
-                extra_data={"ip_address": get_client_ip(request)},
-            )
+        log_user_action(
+            audit_logger,
+            "user_registered",
+            user_id=user.id,
+            user_email=user.email,
+            extra_data={"ip_address": get_client_ip(request)},
+        )
 
-            log_analytics_event(
-                "user_registered",
-                "users",
-                user_id=user.id,
-                properties={"ip_address": get_client_ip(request)},
-            )
+        log_analytics_event(
+            "user_registered",
+            "users",
+            user_id=user.id,
+            properties={"ip_address": get_client_ip(request)},
+        )
 
-            return Response(
-                {
-                    "user": UserSerializer(user).data,
-                    "message": "User registered successfully",
-                },
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "user": UserSerializer(user).data,
+                "message": "User registered successfully",
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -350,7 +344,7 @@ def request_password_reset(request):
         )
         return Response({"message": "Password reset email sent"})
     except User.DoesNotExist:
-        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        raise NotFound("User not found")
 
 
 @api_view(["POST"])
