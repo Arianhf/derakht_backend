@@ -1,11 +1,13 @@
 # shop/views/payment.py
 
 import logging
+from typing import Optional, Any, Dict
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponseRedirect
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -41,7 +43,7 @@ class PaymentRequestView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, order_id=None):
+    def post(self, request: Request, order_id: Optional[str] = None) -> Response:
         """
         Initiate payment for an order
         """
@@ -197,7 +199,7 @@ class PaymentCallbackView(APIView):
 
     permission_classes = [AllowAny]  # Allow unauthenticated callbacks from payment gateway
 
-    def get(self, request, gateway, payment_id):
+    def get(self, request: Request, gateway: str, payment_id: str) -> Response:
         """
         Handle callback from payment gateway
         """
@@ -285,7 +287,7 @@ class PaymentCallbackView(APIView):
             )
             raise
 
-    def post(self, request, gateway, payment_id):
+    def post(self, request: Request, gateway: str, payment_id: str) -> Response:
         """
         Handle callback from payment gateway (POST method)
         """
@@ -319,7 +321,7 @@ class PaymentStatusView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, payment_id=None):
+    def get(self, request: Request, payment_id: Optional[str] = None) -> Response:
         """
         Get payment status
         """
@@ -367,7 +369,7 @@ class PaymentMethodsView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request: Request) -> Response:
         """
         Get available payment methods
         """
@@ -400,7 +402,7 @@ class PaymentVerificationView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         """
         Verify payment status based on frontend request
 
@@ -509,7 +511,7 @@ class PaymentReceiptUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         """
         Upload payment receipt for an order
 

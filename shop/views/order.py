@@ -1,9 +1,11 @@
 # shop/views/order.py
 
+from typing import Any, Optional
 from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.request import Request
 from rest_framework.response import Response
 from ..models import Order, PaymentInfo
 from ..serializers.order import OrderSerializer, OrderDetailSerializer
@@ -49,7 +51,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         return OrderSerializer
 
     @action(detail=True, methods=["post"])
-    def cancel(self, request, pk=None):
+    def cancel(self, request: Request, pk: Optional[str] = None) -> Response:
         """
         Cancel order
         """
@@ -76,7 +78,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
     @action(detail=True, methods=["post"])
-    def request_payment(self, request, pk=None):
+    def request_payment(self, request: Request, pk: Optional[str] = None) -> Response:
         """
         Request payment for order
         """
@@ -111,7 +113,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
     @action(detail=True, methods=["post"])
-    def verify_payment(self, request, pk=None):
+    def verify_payment(self, request: Request, pk: Optional[str] = None) -> Response:
         """
         Verify payment for order
         """

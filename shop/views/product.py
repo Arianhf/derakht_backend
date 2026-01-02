@@ -1,10 +1,12 @@
 # shop/views/product.py
+from typing import Optional
 from django.urls import path
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
+from rest_framework.request import Request
 from rest_framework.response import Response
 from wagtail.api.v2.views import PagesAPIViewSet
 
@@ -73,7 +75,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
     @action(detail=False, methods=["get"])
-    def by_age(self, request):
+    def by_age(self, request: Request) -> Response:
         """
         Filter products by age
         """
@@ -103,7 +105,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
-    def age_filter(self, request):
+    def age_filter(self, request: Request) -> Response:
         """
         Filter products by age range
         """
@@ -143,7 +145,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     @action(
         detail=False, url_path="by_category/(?P<category_id>[^/.]+)", methods=["get"]
     )
-    def by_category(self, request, category_id=None):
+    def by_category(self, request: Request, category_id: Optional[str] = None) -> Response:
         """
         Get products by category
         """
@@ -187,7 +189,7 @@ class ProductInfoPageAPIViewSet(PagesAPIViewSet):
     search_fields = ["title", "intro", "body", "product_code"]
 
     @action(detail=False, methods=["get"])
-    def by_product_code(self, request):
+    def by_product_code(self, request: Request) -> Response:
         """
         Return a product info page by product code
         """
