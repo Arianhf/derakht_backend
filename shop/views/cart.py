@@ -27,6 +27,7 @@ from ..serializers.shipping import (
 )
 from ..services.shipping import ShippingCalculator
 from ..services.order import OrderService
+from ..services.cart import CartService
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -126,80 +127,17 @@ class CartViewSet(viewsets.ViewSet):
 
         product = get_object_or_404(Product, id=product_id)
 
-        # Check if product is available
-        if not product.is_available:
-            logger.warning(
-                "Attempt to add unavailable product to cart",
-                extra={
-                    "extra_data": {
-                        "product_id": str(product.id),
-                        "product_title": product.title,
-                        "user_id": str(request.user.id)
-                        if request.user.is_authenticated
-                        else None,
-                        "anonymous_cart_id": str(anonymous_cart_id)
-                        if anonymous_cart_id
-                        else None,
-                    }
-                },
-            )
-            return Response(
-                {"error": "Product is not available"},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-
-        # Check if product is in stock
-        if product.stock < quantity:
-            logger.warning(
-                "Attempt to add product with insufficient stock to cart",
-                extra={
-                    "extra_data": {
-                        "product_id": str(product.id),
-                        "product_title": product.title,
-                        "requested_quantity": quantity,
-                        "available_stock": product.stock,
-                        "user_id": str(request.user.id)
-                        if request.user.is_authenticated
-                        else None,
-                    }
-                },
-            )
-            return Response(
-                {"error": "Not enough stock available"},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-
         # Get the appropriate cart
         cart, created = self.get_cart(request, anonymous_cart_id)
 
-        # Get or create cart item
-        cart_item, item_created = CartItem.objects.get_or_create(
-            cart=cart, product=product, defaults={"quantity": quantity}
-        )
-
-        # If cart item already exists, update quantity
-        if not item_created:
-            cart_item.quantity += quantity
-            if cart_item.quantity > product.stock:
-                logger.warning(
-                    "Attempt to update cart item exceeds available stock",
-                    extra={
-                        "extra_data": {
-                            "product_id": str(product.id),
-                            "product_title": product.title,
-                            "requested_total_quantity": cart_item.quantity,
-                            "available_stock": product.stock,
-                            "user_id": str(request.user.id)
-                            if request.user.is_authenticated
-                            else None,
-                        }
-                    },
-                )
-                return Response(
-                    {"error": "Not enough stock available"},
-                    status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                )
-            cart_item.save()
+        try:
+            # Use CartService to add item
+            CartService.add_item(cart, product, quantity)
+        except ValueError as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
 
         # Get updated cart details
         return self.details(request)
@@ -222,59 +160,19 @@ class CartViewSet(viewsets.ViewSet):
         # Get the product
         product = get_object_or_404(Product, id=product_id)
 
-        # If quantity is 0, remove the item
-        if quantity == 0:
-            CartItem.objects.filter(cart=cart, product=product).delete()
-            return self.details(request)
-
-        # Check if product is available
-        if not product.is_available:
-            logger.warning(
-                "Attempt to update quantity for unavailable product",
-                extra={
-                    "extra_data": {
-                        "product_id": str(product.id),
-                        "product_title": product.title,
-                        "user_id": str(request.user.id)
-                        if request.user.is_authenticated
-                        else None,
-                    }
-                },
-            )
+        try:
+            # Use CartService to update quantity
+            CartService.update_quantity(cart, product, quantity)
+        except CartItem.DoesNotExist:
             return Response(
-                {"error": "Product is not available"},
+                {"error": "Item not found in cart"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except ValueError as e:
+            return Response(
+                {"error": str(e)},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
-
-        # Check if product is in stock
-        if product.stock < quantity:
-            logger.warning(
-                "Attempt to update product quantity exceeds available stock",
-                extra={
-                    "extra_data": {
-                        "product_id": str(product.id),
-                        "product_title": product.title,
-                        "requested_quantity": quantity,
-                        "available_stock": product.stock,
-                        "user_id": str(request.user.id)
-                        if request.user.is_authenticated
-                        else None,
-                    }
-                },
-            )
-            return Response(
-                {"error": "Not enough stock available"},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-
-        # Update cart item
-        cart_item, created = CartItem.objects.get_or_create(
-            cart=cart, product=product, defaults={"quantity": quantity}
-        )
-
-        if not created:
-            cart_item.quantity = quantity
-            cart_item.save()
 
         # Get updated cart details
         return self.details(request)
@@ -561,106 +459,37 @@ class CartViewSet(viewsets.ViewSet):
         cart, created = self.get_cart(request, anonymous_cart_id)
 
         try:
-            promo = PromoCode.objects.get(
-                code=code,
-                is_active=True,
-                valid_from__lte=timezone.now(),
-                valid_to__gte=timezone.now(),
-            )
-        except PromoCode.DoesNotExist:
-            logger.warning(
-                "Invalid promo code attempt",
-                extra={
-                    "extra_data": {
-                        "code": code,
-                        "cart_id": str(cart.id),
-                        "user_id": str(request.user.id)
-                        if request.user.is_authenticated
-                        else None,
-                    }
-                },
-            )
+            # Use CartService to apply promo code
+            promo, discount_amount = CartService.apply_promo_code(cart, code)
+        except ValueError as e:
             return Response(
-                {"error": "Invalid or expired promo code"},
+                {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Check if max uses has been reached
-        if promo.max_uses and promo.used_count >= promo.max_uses:
-            logger.warning(
-                "Promo code usage limit exceeded",
-                extra={
-                    "extra_data": {
-                        "code": code,
-                        "max_uses": promo.max_uses,
-                        "used_count": promo.used_count,
-                        "user_id": str(request.user.id)
-                        if request.user.is_authenticated
-                        else None,
-                    }
-                },
-            )
-            return Response(
-                {"error": "This promo code has reached its usage limit"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        total_amount = cart.total_amount
-
-        # Check if minimum purchase requirement is met
-        if total_amount < promo.min_purchase:
-            logger.warning(
-                "Promo code minimum purchase requirement not met",
-                extra={
-                    "extra_data": {
-                        "code": code,
-                        "min_purchase": float(promo.min_purchase),
-                        "current_total": float(total_amount),
-                        "user_id": str(request.user.id)
-                        if request.user.is_authenticated
-                        else None,
-                    }
-                },
-            )
-            return Response(
-                {
-                    "error": f"Minimum purchase of {promo.min_purchase} is required to use this promo code"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Calculate discount
-        if promo.discount_type == "fixed":
-            discount_amount = promo.discount_value
-        else:  # percentage discount
-            discount_amount = total_amount * (promo.discount_value / 100)
-
-            # Apply maximum discount if applicable
-            if promo.max_discount and discount_amount > promo.max_discount:
-                discount_amount = promo.max_discount
-
-        # Store promo code in session (or a Cart model if you have one)
+        # Store promo code in session
         request.session["applied_promo"] = {
             "code": promo.code,
-            "discount_amount": discount_amount,
+            "discount_amount": float(discount_amount),
         }
 
         # Get updated cart details with promo applied
-        # Optimize queries to prevent N+1 issues
         cart_items_with_promo = cart.items.select_related(
             "product__category"
         ).prefetch_related(
             "product__images"
         ).all()
 
+        total_amount = CartService.calculate_total(cart)
+
         data = {
             "cart_id": str(cart.anonymous_id) if cart.anonymous_id else None,
             "is_authenticated": request.user.is_authenticated,
             "items_count": cart.items_count,
-            "total_amount": total_amount - discount_amount,
+            "total_amount": total_amount,
             "items": cart_items_with_promo,
-            "applied_promo": {"code": promo.code, "discount_amount": discount_amount},
-            "shipping_cost": 0,  # This would be calculated based on location, etc.
+            "applied_promo": {"code": promo.code, "discount_amount": float(discount_amount)},
+            "shipping_cost": 0,
         }
 
         serializer = CartDetailsSerializer(data)
@@ -668,7 +497,7 @@ class CartViewSet(viewsets.ViewSet):
             {
                 "success": True,
                 "message": "Promo code applied",
-                "discount_amount": discount_amount,
+                "discount_amount": float(discount_amount),
                 "cart": serializer.data,
             }
         )
