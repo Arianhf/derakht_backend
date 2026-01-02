@@ -2,12 +2,13 @@ import copy
 import logging
 import uuid
 from typing import Optional
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import models
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -785,7 +786,7 @@ class StoryCollectionViewSet(viewsets.ModelViewSet):
                 },
                 exc_info=True,
             )
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError(str(e))
 
     @action(detail=True, methods=["post"])
     def remove_story(self, request, pk=None):
@@ -810,7 +811,7 @@ class StoryCollectionViewSet(viewsets.ModelViewSet):
                 },
                 exc_info=True,
             )
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError(str(e))
 
 
 class ImageAssetViewSet(viewsets.ModelViewSet):

@@ -7,6 +7,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 import uuid
 
@@ -300,9 +301,7 @@ class CartViewSet(viewsets.ViewSet):
         Get shipping methods estimate for given location and cart
         """
         serializer = ShippingEstimateRequestSerializer(data=request.data)
-
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         province = serializer.validated_data["province"]
         city = serializer.validated_data["city"]
@@ -405,7 +404,7 @@ class CartViewSet(viewsets.ViewSet):
             shipping_method_id, province
         )
         if not is_valid:
-            return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError(error_message)
 
         # Calculate total amount and shipping cost
         items_total = cart.total_amount
@@ -414,7 +413,7 @@ class CartViewSet(viewsets.ViewSet):
                 shipping_method_id, province, items_total
             )
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError(str(e))
 
         # Create order using OrderService
         try:
