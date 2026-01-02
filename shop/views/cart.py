@@ -26,6 +26,7 @@ from ..serializers.shipping import (
     ShippingEstimateResponseSerializer,
 )
 from ..services.shipping import ShippingCalculator
+from ..services.order import OrderService
 from ..services.cart import CartService
 
 # Initialize logger
@@ -412,45 +413,20 @@ class CartViewSet(viewsets.ViewSet):
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        total_amount = items_total + shipping_cost
-        phone_number = shipping_info["phone_number"]
-
-        # Create order
-        order = Order.objects.create(
-            user=request.user if request.user.is_authenticated else None,
-            total_amount=total_amount,
-            phone_number=phone_number,
-            status=OrderStatus.PENDING,
-            shipping_method=shipping_method_id,
-            shipping_cost=shipping_cost,
-        )
-
-        # Create shipping info
-        ShippingInfo.objects.create(
-            order=order,
-            address=shipping_info["address"],
-            city=shipping_info["city"],
-            province=shipping_info["province"],
-            postal_code=shipping_info["postal_code"],
-            recipient_name=shipping_info["recipient_name"],
-            phone_number=shipping_info["phone_number"],
-        )
-
-        # Create order items using bulk_create for better performance
-        cart_items = cart.items.select_related('product').all()
-        order_items = [
-            OrderItem(
-                order=order,
-                product=item.product,
-                quantity=item.quantity,
-                price=item.product.price,
+        # Create order using OrderService
+        try:
+            order = OrderService.create_from_cart(
+                cart=cart,
+                shipping_info=shipping_info,
+                shipping_method_id=shipping_method_id,
+                shipping_cost=shipping_cost,
+                user=request.user if request.user.is_authenticated else None,
             )
-            for item in cart_items
-        ]
-        OrderItem.objects.bulk_create(order_items)
-
-        # Clear cart after checkout
-        cart.items.all().delete()
+        except ValueError as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Return order details
         serializer = OrderSerializer(order)
