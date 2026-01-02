@@ -1,6 +1,28 @@
 # shop/services/payment.py
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TypedDict, Literal
+from decimal import Decimal
+from uuid import UUID
+
+
+class PaymentRequestResult(TypedDict):
+    """Type definition for payment request results"""
+    success: bool
+    payment_url: str
+    payment_id: UUID
+    gateway: str
+    authority: Optional[str]
+    error_message: Optional[str]
+
+
+class PaymentVerificationResult(TypedDict):
+    """Type definition for payment verification results"""
+    success: bool
+    reference_id: Optional[str]
+    status: Literal['COMPLETED', 'FAILED', 'PENDING']
+    amount: Decimal
+    error_message: Optional[str]
+
 
 from ..gateways.factory import PaymentGatewayFactory
 from ..models import Order, Payment
@@ -12,7 +34,7 @@ class PaymentService:
     @classmethod
     def request_payment(
         cls, order: Order, gateway_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> PaymentRequestResult:
         """
         Request a payment for an order
 
@@ -21,7 +43,7 @@ class PaymentService:
             gateway_name: The name of the payment gateway to use
 
         Returns:
-            Dictionary with payment information and redirect URL
+            PaymentRequestResult with payment information and redirect URL
         """
         # Get the payment gateway
         gateway = PaymentGatewayFactory.get_gateway(gateway_name)
@@ -32,7 +54,7 @@ class PaymentService:
     @classmethod
     def verify_payment(
         cls, payment: Payment, request_data: Dict, gateway_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> PaymentVerificationResult:
         """
         Verify a payment
 
@@ -42,7 +64,7 @@ class PaymentService:
             gateway_name: The name of the payment gateway to use
 
         Returns:
-            Dictionary with verification result
+            PaymentVerificationResult with verification details
         """
         # If gateway_name is not provided, use the one from the payment
         if gateway_name is None:
