@@ -1,6 +1,7 @@
 import copy
 import logging
 import uuid
+from typing import Optional
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.decorators import method_decorator
@@ -9,6 +10,7 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -82,7 +84,7 @@ class StoryTemplateViewSet(viewsets.ModelViewSet):
         return queryset
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
-    def start_story(self, request, pk=None):
+    def start_story(self, request: Request, pk: Optional[str] = None) -> Response:
         """Initialize a new story from this template"""
         template = self.get_object()
 

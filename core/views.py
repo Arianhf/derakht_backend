@@ -1,4 +1,5 @@
 # core/views.py
+from typing import Optional, Tuple, Any
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.search import TrigramSimilarity
 from django.core.cache import cache
@@ -8,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 import hashlib
@@ -25,7 +27,7 @@ logger = get_logger(__name__)
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
-def feature_flags(request):
+def feature_flags(request: Request) -> Response:
     """Get all feature flags with caching"""
     cache_key = 'feature_flags:all'
     flags_data = cache.get(cache_key)
@@ -42,7 +44,7 @@ def feature_flags(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
-def feature_flag_detail(request, name):
+def feature_flag_detail(request: Request, name: str) -> Response:
     """Get a specific feature flag by name"""
     enabled = is_feature_enabled(name)
     return Response({"name": name, "enabled": enabled})
@@ -50,7 +52,7 @@ def feature_flag_detail(request, name):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
-def global_search(request):
+def global_search(request: Request) -> Response:
     """
     Global search endpoint that searches across blogs and products with fuzzy matching.
     Results are cached for 5 minutes to improve performance.
@@ -129,7 +131,7 @@ class CommentPagination(PageNumberPagination):
     max_page_size = 100
 
 
-def get_content_object_or_404(app_label, model_name, identifier):
+def get_content_object_or_404(app_label: str, model_name: str, identifier: str) -> Tuple[Optional[Any], Optional[str]]:
     """
     Helper function to get a content object by app_label, model_name, and identifier.
     Supports both slug and UUID lookups.
@@ -156,7 +158,7 @@ def get_content_object_or_404(app_label, model_name, identifier):
 
 @api_view(['GET', 'POST'])
 @permission_classes([permissions.AllowAny])
-def comments_list_create(request, app_label, model_name, identifier):
+def comments_list_create(request: Request, app_label: str, model_name: str, identifier: str) -> Response:
     """
     GET /comments/{app_label}/{model_name}/{identifier}/ - List comments
     POST /comments/{app_label}/{model_name}/{identifier}/ - Create comment
@@ -180,7 +182,7 @@ def comments_list_create(request, app_label, model_name, identifier):
         return create_comment(request, content_object)
 
 
-def list_comments(request, content_object):
+def list_comments(request: Request, content_object: Any) -> Response:
     """
     List all approved comments for a content object.
     Only approved comments are returned to non-admin users.
@@ -225,7 +227,7 @@ def list_comments(request, content_object):
     })
 
 
-def create_comment(request, content_object):
+def create_comment(request: Request, content_object: Any) -> Response:
     """
     Create a new comment for a content object.
     Supports both authenticated and anonymous users.
@@ -311,7 +313,7 @@ def create_comment(request, content_object):
 
 @api_view(['DELETE'])
 @permission_classes([permissions.IsAuthenticated])
-def comment_delete(request, comment_id):
+def comment_delete(request: Request, comment_id: str) -> Response:
     """
     DELETE /comments/{comment_id}/ - Delete a comment
 

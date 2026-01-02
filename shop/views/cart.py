@@ -1,8 +1,11 @@
 # shop/views/cart.py
 
+from typing import Tuple, Optional, Any
+from uuid import UUID
 from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
+from rest_framework.request import Request
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 import uuid
@@ -40,7 +43,7 @@ class CartViewSet(viewsets.ViewSet):
 
     permission_classes = (permissions.AllowAny,)
 
-    def get_cart(self, request, anonymous_cart_id=None):
+    def get_cart(self, request: Request, anonymous_cart_id: Optional[UUID] = None) -> Tuple[Cart, bool]:
         """
         Helper method to get the appropriate cart
         """
@@ -74,7 +77,7 @@ class CartViewSet(viewsets.ViewSet):
         return cart, created
 
     @action(detail=False, methods=["get"])
-    def details(self, request):
+    def details(self, request: Request) -> Response:
         """
         Get cart details
         """
@@ -114,7 +117,7 @@ class CartViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=["post"])
-    def add_item(self, request):
+    def add_item(self, request: Request) -> Response:
         """
         Add item to cart
         """
@@ -143,7 +146,7 @@ class CartViewSet(viewsets.ViewSet):
         return self.details(request)
 
     @action(detail=False, methods=["post"])
-    def update_quantity(self, request):
+    def update_quantity(self, request: Request) -> Response:
         """
         Update item quantity in cart
         """
@@ -178,7 +181,7 @@ class CartViewSet(viewsets.ViewSet):
         return self.details(request)
 
     @action(detail=False, methods=["post"])
-    def remove_item(self, request):
+    def remove_item(self, request: Request) -> Response:
         """
         Remove item from cart
         """
@@ -201,7 +204,7 @@ class CartViewSet(viewsets.ViewSet):
         return self.details(request)
 
     @action(detail=False, methods=["post"])
-    def clear(self, request):
+    def clear(self, request: Request) -> Response:
         """
         Clear cart
         """
@@ -227,7 +230,7 @@ class CartViewSet(viewsets.ViewSet):
         return self.details(request)
 
     @action(detail=False, methods=["post"])
-    def merge(self, request):
+    def merge(self, request: Request) -> Response:
         """
         Merge anonymous cart with user cart
         """
@@ -292,7 +295,7 @@ class CartViewSet(viewsets.ViewSet):
         return self.details(request)
 
     @action(detail=False, methods=["post"], url_path="shipping-estimate")
-    def shipping_estimate(self, request):
+    def shipping_estimate(self, request: Request) -> Response:
         """
         Get shipping methods estimate for given location and cart
         """
@@ -350,7 +353,7 @@ class CartViewSet(viewsets.ViewSet):
         return Response(response_serializer.data)
 
     @action(detail=False, methods=["post"])
-    def checkout(self, request):
+    def checkout(self, request: Request) -> Response:
         """
         Checkout and create order
         """
@@ -433,7 +436,7 @@ class CartViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=["post"])
-    def apply_promo(self, request):
+    def apply_promo(self, request: Request) -> Response:
         """
         Apply promo code to cart
         """

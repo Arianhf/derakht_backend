@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import logging
+from typing import Optional
 
 import jwt
 from django.conf import settings
@@ -15,6 +16,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -50,12 +52,12 @@ audit_logger = get_logger("audit")
 class UserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request: Request) -> Response:
         """Get current user information"""
         serializer = UserSerializer(request.user, context={'request': request})
         return Response(serializer.data)
 
-    def patch(self, request):
+    def patch(self, request: Request) -> Response:
         """Update user profile"""
         serializer = UserSerializer(request.user, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
@@ -86,7 +88,7 @@ class UserView(APIView):
 class ProfileImageView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         """Upload or update profile image"""
         serializer = ProfileImageSerializer(
             request.user,
