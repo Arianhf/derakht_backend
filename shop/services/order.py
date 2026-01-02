@@ -1,5 +1,5 @@
 # shop/services/order.py
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from decimal import Decimal
 from django.db import transaction
 from django.contrib.auth import get_user_model
@@ -23,7 +23,7 @@ class OrderService:
         shipping_info: Dict[str, Any],
         shipping_method_id: str,
         shipping_cost: Decimal,
-        user: User = None,
+        user: Optional[User] = None,
         notes: str = ''
     ) -> Order:
         """
