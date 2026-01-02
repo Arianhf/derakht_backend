@@ -1,5 +1,7 @@
 # shop/services/shipping.py
 
+from typing import List, Dict, Any, Tuple
+
 from ..choices import ShippingMethod
 
 
@@ -13,7 +15,7 @@ class ShippingCalculator:
     TEHRAN_PROVINCE = "تهران"
 
     @classmethod
-    def get_shipping_methods(cls, province: str, city: str, cart_total: int) -> list:
+    def get_shipping_methods(cls, province: str, city: str, cart_total: int) -> List[Dict[str, Any]]:
         """
         Get available shipping methods with costs for the given location and cart total
 
@@ -101,7 +103,7 @@ class ShippingCalculator:
     @classmethod
     def validate_shipping_method(
         cls, shipping_method_id: str, province: str
-    ) -> tuple[bool, str]:
+    ) -> Tuple[bool, str]:
         """
         Validate if a shipping method is available for the given province
 
