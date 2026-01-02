@@ -25,6 +25,20 @@ class Cart(BaseModel):
     anonymous_id = models.UUIDField(
         _("Anonymous Cart ID"), null=True, blank=True, db_index=True
     )
+    promo_code = models.ForeignKey(
+        'PromoCode',
+        on_delete=models.SET_NULL,
+        related_name="carts",
+        verbose_name=_("Promo Code"),
+        null=True,
+        blank=True,
+    )
+    discount_amount = models.DecimalField(
+        _("Discount Amount"),
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
     last_activity = models.DateTimeField(_("Last Activity"), auto_now=True)
 
     class Meta:
