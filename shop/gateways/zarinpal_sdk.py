@@ -35,7 +35,7 @@ class ZarinpalSDKGateway(PaymentGateway):
         # Initialize Zarinpal client
         self.client = ZarinPal(config)
 
-    def request_payment(self, order: Order) -> Dict[str, Any]:
+    def request_payment(self, order: Order):
         """
         Request a payment from Zarinpal
 
@@ -43,7 +43,7 @@ class ZarinpalSDKGateway(PaymentGateway):
             order: The order to be paid
 
         Returns:
-            Dictionary with payment information and redirect URL
+            PaymentRequestResult with payment information and redirect URL
         """
         # Create a payment record or get the existing one
         payment, created = Payment.objects.get_or_create(
@@ -107,10 +107,11 @@ class ZarinpalSDKGateway(PaymentGateway):
 
                 return {
                     "success": True,
-                    "payment_id": str(payment.id),
+                    "payment_id": payment.id,
                     "authority": response_data.get("authority"),
                     "payment_url": payment_url,
                     "gateway": "zarinpal_sdk",
+                    "error_message": None,
                 }
             else:
                 # Handle error
@@ -119,11 +120,13 @@ class ZarinpalSDKGateway(PaymentGateway):
 
                 return {
                     "success": False,
-                    "error_code": response_data.get("code"),
+                    "payment_id": payment.id,
+                    "payment_url": "",
+                    "gateway": "zarinpal_sdk",
+                    "authority": None,
                     "error_message": response_data.get(
                         "message", "Payment request failed"
                     ),
-                    "gateway": "zarinpal_sdk",
                 }
 
         except Exception as e:
@@ -141,11 +144,14 @@ class ZarinpalSDKGateway(PaymentGateway):
 
             return {
                 "success": False,
-                "error_message": str(e),
+                "payment_id": payment.id,
+                "payment_url": "",
                 "gateway": "zarinpal_sdk",
+                "authority": None,
+                "error_message": str(e),
             }
 
-    def verify_payment(self, payment: Payment, request_data: Dict) -> Dict[str, Any]:
+    def verify_payment(self, payment: Payment, request_data: Dict):
         """
         Verify a payment with Zarinpal
 
@@ -154,7 +160,7 @@ class ZarinpalSDKGateway(PaymentGateway):
             request_data: Data from the payment gateway callback
 
         Returns:
-            Dictionary with verification result
+            PaymentVerificationResult with verification details
         """
         authority = request_data.get("Authority", "")
         status = request_data.get("Status", "")
@@ -166,8 +172,10 @@ class ZarinpalSDKGateway(PaymentGateway):
 
             return {
                 "success": False,
-                "message": "Payment was canceled by user",
-                "gateway": "zarinpal_sdk",
+                "reference_id": None,
+                "status": "FAILED",
+                "amount": payment.amount,
+                "error_message": "Payment was canceled by user",
             }
 
         try:
@@ -205,9 +213,10 @@ class ZarinpalSDKGateway(PaymentGateway):
 
                 return {
                     "success": True,
-                    "ref_id": response_data.get("ref_id"),
-                    "message": "Payment was successful",
-                    "gateway": "zarinpal_sdk",
+                    "reference_id": str(response_data.get("ref_id")),
+                    "status": "COMPLETED",
+                    "amount": payment.amount,
+                    "error_message": None,
                 }
             else:
                 # Handle verification failure
@@ -216,11 +225,12 @@ class ZarinpalSDKGateway(PaymentGateway):
 
                 return {
                     "success": False,
-                    "error_code": response_data.get("code"),
-                    "message": response_data.get(
+                    "reference_id": None,
+                    "status": "FAILED",
+                    "amount": payment.amount,
+                    "error_message": response_data.get(
                         "message", "Payment verification failed"
                     ),
-                    "gateway": "zarinpal_sdk",
                 }
 
         except Exception as e:
@@ -236,7 +246,13 @@ class ZarinpalSDKGateway(PaymentGateway):
                 raw_response={"error": str(e)},
             )
 
-            return {"success": False, "message": str(e), "gateway": "zarinpal_sdk"}
+            return {
+                "success": False,
+                "reference_id": None,
+                "status": "FAILED",
+                "amount": payment.amount,
+                "error_message": str(e),
+            }
 
     def get_payment_url(self, payment: Payment, token: str) -> str:
         """

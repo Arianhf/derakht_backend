@@ -1,16 +1,17 @@
 # shop/gateways/base.py
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Dict
 
 from ..models import Payment, Order
+from ..services.payment import PaymentRequestResult, PaymentVerificationResult
 
 
 class PaymentGateway(ABC):
     """Abstract base class for payment gateway implementations"""
 
     @abstractmethod
-    def request_payment(self, order: Order) -> Dict[str, Any]:
+    def request_payment(self, order: Order) -> PaymentRequestResult:
         """
         Request a payment from the payment gateway
 
@@ -18,12 +19,12 @@ class PaymentGateway(ABC):
             order: The order to be paid
 
         Returns:
-            Dictionary with payment information and redirect URL
+            PaymentRequestResult with payment information and redirect URL
         """
         pass
 
     @abstractmethod
-    def verify_payment(self, payment: Payment, request_data: Dict) -> Dict[str, Any]:
+    def verify_payment(self, payment: Payment, request_data: Dict) -> PaymentVerificationResult:
         """
         Verify a payment with the payment gateway
 
@@ -32,7 +33,7 @@ class PaymentGateway(ABC):
             request_data: Data from the payment gateway callback
 
         Returns:
-            Dictionary with verification result
+            PaymentVerificationResult with verification details
         """
         pass
 
