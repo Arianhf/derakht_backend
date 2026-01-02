@@ -8,6 +8,7 @@ from rest_framework.exceptions import ValidationError
 from django.conf import settings
 
 from shop.models import BaseModel
+from .validators import validate_iranian_phone, validate_iranian_postal_code
 
 
 class User(AbstractUser):
@@ -119,8 +120,16 @@ class Address(BaseModel):
     address = models.TextField("Address")
     city = models.CharField("City", max_length=100)
     province = models.CharField("Province", max_length=100)
-    postal_code = models.CharField("Postal Code", max_length=20)
-    phone_number = models.CharField("Phone Number", max_length=15)
+    postal_code = models.CharField(
+        "Postal Code",
+        max_length=20,
+        validators=[validate_iranian_postal_code]
+    )
+    phone_number = models.CharField(
+        "Phone Number",
+        max_length=15,
+        validators=[validate_iranian_phone]
+    )
     is_default = models.BooleanField("Is Default", default=False)
 
     class Meta:

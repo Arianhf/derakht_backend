@@ -10,6 +10,7 @@ from .product import Product
 from ..choices import OrderStatus, Currency, ShippingMethod
 from ..managers import OrderManager, CartManager
 from ..order_management import OrderStatusTransition
+from users.validators import validate_iranian_phone, validate_iranian_postal_code
 
 
 class Order(BaseModel):
@@ -29,7 +30,11 @@ class Order(BaseModel):
         _("Currency"), max_length=3, choices=Currency.choices, default=Currency.IRR
     )
     total_amount = models.PositiveIntegerField(_("Total Amount"))
-    phone_number = models.CharField(_("Phone Number"), max_length=15)
+    phone_number = models.CharField(
+        _("Phone Number"),
+        max_length=15,
+        validators=[validate_iranian_phone]
+    )
     notes = models.TextField(_("Notes"), blank=True, null=True)
     tracking_code = models.CharField(_("Tracking Code"), max_length=100, blank=True)
     shipping_method = models.CharField(
@@ -172,9 +177,17 @@ class ShippingInfo(BaseModel):
     address = models.TextField(_("Address"))
     city = models.CharField(_("City"), max_length=100)
     province = models.CharField(_("Province"), max_length=100)
-    postal_code = models.CharField(_("Postal Code"), max_length=20)
+    postal_code = models.CharField(
+        _("Postal Code"),
+        max_length=20,
+        validators=[validate_iranian_postal_code]
+    )
     recipient_name = models.CharField(_("Recipient Name"), max_length=255)
-    phone_number = models.CharField(_("Phone Number"), max_length=15)
+    phone_number = models.CharField(
+        _("Phone Number"),
+        max_length=15,
+        validators=[validate_iranian_phone]
+    )
 
     class Meta:
         verbose_name = _("Shipping Information")
