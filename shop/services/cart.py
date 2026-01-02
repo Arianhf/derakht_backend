@@ -238,9 +238,9 @@ class CartService:
 
         # Calculate discount
         if promo.discount_type == "percentage":
-            discount_amount = total_amount * (promo.discount_value / 100)
+            discount_amount = total_amount * (Decimal(promo.discount_value) / Decimal(100))
         else:  # fixed
-            discount_amount = promo.discount_value
+            discount_amount = Decimal(promo.discount_value)
 
         # Apply to cart
         cart.promo_code = promo

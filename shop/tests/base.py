@@ -13,10 +13,12 @@ class ShopTestCase(TestCase):
         """Set up test fixtures"""
         # Create test user
         self.user = User.objects.create_user(
+            username='testuser',
             email='test@example.com',
             password='testpass123',
             first_name='Test',
             last_name='User',
+            age=25,
         )
 
         # Create test category
