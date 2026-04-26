@@ -6,7 +6,11 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir \
+    --timeout=300 \
+    --retries=5 \
+    --index-url https://repo.hmirror.ir/python/simple \
+    -r requirements.txt
 
 COPY . .
 
