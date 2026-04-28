@@ -20,7 +20,6 @@ class StoryPartTemplateInline(admin.TabularInline):
         formset.form.base_fields['canvas_illustration_template'].widget = forms.Textarea(attrs={'rows': 4, 'cols': 60, 'placeholder': 'Enter JSON for illustration canvas template'})
         return formset
 
-
 class StoryTemplateAdminForm(forms.ModelForm):
     collections = forms.ModelMultipleChoiceField(
         queryset=StoryCollection.objects.all(),
