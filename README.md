@@ -45,3 +45,13 @@ nginx/
 ## Author
 Arian Hedayati Far
 Python / Django Backend Developer
+
+## What I can help you with
+
+- Build REST APIs with Django/DRF
+- Fix bugs in existing Django projects
+- Optimize slow queries
+- Add new backend features quickly
+- Dockerize Django applications
+
+If you need help, feel free to reach out.
