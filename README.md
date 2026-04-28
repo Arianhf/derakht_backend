@@ -30,3 +30,18 @@ This project demonstrates my ability to structure a Django backend with multiple
 git clone https://github.com/Arianhf/derakht_backend.git
 cd derakht_backend
 docker compose up --build
+```
+
+## Project Structure
+```
+blog/
+shop/
+stories/
+users/
+derakht/
+nginx/
+```
+
+## Author
+Arian Hedayati Far
+Python / Django Backend Developer
